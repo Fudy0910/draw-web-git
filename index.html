@@ -214,7 +214,7 @@
     .toolbar::-webkit-scrollbar { display: none; }
     .toolbar button, .toolbar label {
       width: 56px;
-      min-height: 52px;
+      min-height: 50px;
       padding: 4px 2px;
       border: none;
       border-radius: 10px;
@@ -229,8 +229,14 @@
       gap: 2px;
       text-align: center;
       flex-shrink: 0;
+      transition: opacity 0.15s ease, transform 0.1s ease;
     }
     .toolbar button:active { transform: scale(0.95); }
+    .toolbar button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
     .toolbar button.active { background: #007bff; }
     .toolbar button.danger { background: #dc3545; }
     .toolbar button.success { background: #28a745; }
@@ -240,7 +246,7 @@
     .toolbar button.logout:hover { background: #5a6268; }
 
     /* 圖示大小設定 */
-    .toolbar svg.icon { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .toolbar svg.icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     
     .dropdown-container { position: relative; width: 100%; display: flex; justify-content: center; flex-shrink: 0; }
     
@@ -465,7 +471,7 @@
 
   <canvas id="snippingLayer"></canvas>
 
-  <!-- 隱藏檔案選擇器（專供 iPad 點擊匯入 PDF 與圖片） -->
+  <!-- 隱藏檔案選擇器（專供點擊匯入 PDF 與圖片） -->
   <input type="file" id="filePickerInput" accept=".pdf,application/pdf,image/*" multiple style="display:none;">
 
   <!-- 右側工具列 -->
@@ -568,6 +574,23 @@
         </div>
       </div>
     </div>
+
+    <!-- 新增：上一步 / 下一步 功能鍵 -->
+    <button id="undoBtn" title="上一步 (Ctrl+Z)" disabled>
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M9 14L4 9l5-5"/>
+        <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
+      </svg>
+      上一步
+    </button>
+
+    <button id="redoBtn" title="下一步 (Ctrl+Y)" disabled>
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M15 14l5-5-5-5"/>
+        <path d="M4 20v-7a4 4 0 0 1 4-4h12"/>
+      </svg>
+      下一步
+    </button>
 
     <button id="openFileBtn" class="info" title="開啟 PDF 或圖片檔案">
       <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
@@ -727,7 +750,7 @@
     }
 
     function checkLogin() {
-      getAudioCtx(); // 在 iPad 使用者點擊當下解鎖音效權限
+      getAudioCtx();
       loginError.style.display = 'none';
       loginSpinner.style.display = 'inline-block';
       loginBtnText.textContent = "驗證中...";
@@ -816,6 +839,9 @@
     const sizePreviewDot = document.getElementById('sizePreviewDot');
     const sizePresetBtns = document.querySelectorAll('.size-preset-btn');
 
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+
     const openFileBtn = document.getElementById('openFileBtn');
     const filePickerInput = document.getElementById('filePickerInput');
     const screenshotBtn = document.getElementById('screenshotBtn');
@@ -849,7 +875,7 @@
     let penSize = 8;
     let eraserSize = 20;
 
-    let pages = [{ paths: [], images: [] }];
+    let pages = [{ paths: [], images: [], undoStack: [], redoStack: [] }];
     let currentPageIndex = 0;
     let paths = pages[0].paths;
     let images = pages[0].images;
@@ -877,6 +903,177 @@
     let sparkleAnimFrame = null;
     let redrawPending = false;
 
+    // =========================================================
+    // 上一步 (Undo) / 下一步 (Redo) 歷史紀錄系統
+    // =========================================================
+    const MAX_HISTORY = 50;
+    const imageCache = new Map();
+    let pendingHistorySnapshot = null;
+    let opacityDragSnapshot = null;
+
+    function getCachedImage(src, onLoadCallback) {
+      if (imageCache.has(src)) {
+        const cached = imageCache.get(src);
+        if (cached.complete && cached.naturalWidth > 0) {
+          return cached;
+        }
+      }
+      const img = new Image();
+      img.onload = () => {
+        imageCache.set(src, img);
+        if (onLoadCallback) onLoadCallback(img);
+      };
+      img.src = src;
+      imageCache.set(src, img);
+      return img;
+    }
+
+    function capturePageState(pageIdx = currentPageIndex) {
+      const targetPage = pages[pageIdx];
+      return {
+        paths: targetPage.paths.map(p => ({
+          type: p.type,
+          color: p.color,
+          size: p.size,
+          opacity: p.opacity !== undefined ? p.opacity : 1.0,
+          rotation: p.rotation || 0,
+          points: p.points.map(pt => ({ x: pt.x, y: pt.y, t: pt.t, p: pt.p }))
+        })),
+        images: targetPage.images.map(img => ({
+          x: img.x,
+          y: img.y,
+          w: img.w,
+          h: img.h,
+          src: img.src,
+          opacity: img.opacity !== undefined ? img.opacity : 1.0,
+          rotation: img.rotation || 0
+        }))
+      };
+    }
+
+    function isSamePageState(s1, s2) {
+      if (!s1 || !s2) return false;
+      if (s1.paths.length !== s2.paths.length || s1.images.length !== s2.images.length) return false;
+      return JSON.stringify(s1) === JSON.stringify(s2);
+    }
+
+    function restorePageState(snapshot, pageIdx = currentPageIndex) {
+      const targetPage = pages[pageIdx];
+      targetPage.paths = snapshot.paths.map(p => ({
+        type: p.type,
+        color: p.color,
+        size: p.size,
+        opacity: p.opacity !== undefined ? p.opacity : 1.0,
+        rotation: p.rotation || 0,
+        points: p.points.map(pt => ({ x: pt.x, y: pt.y, t: pt.t, p: pt.p }))
+      }));
+
+      targetPage.images = snapshot.images.map(imgItem => {
+        const img = getCachedImage(imgItem.src, () => {
+          if (pageIdx === currentPageIndex) redraw();
+        });
+        if (img.complete && img.naturalWidth > 0) {
+          imageCache.set(imgItem.src, img);
+        }
+        return {
+          img: img,
+          x: imgItem.x,
+          y: imgItem.y,
+          w: imgItem.w,
+          h: imgItem.h,
+          src: imgItem.src,
+          opacity: imgItem.opacity !== undefined ? imgItem.opacity : 1.0,
+          rotation: imgItem.rotation || 0
+        };
+      });
+
+      if (pageIdx === currentPageIndex) {
+        paths = targetPage.paths;
+        images = targetPage.images;
+      }
+    }
+
+    function pushHistorySnapshot(snapshot, pageIdx = currentPageIndex) {
+      if (!snapshot) return;
+      const targetPage = pages[pageIdx];
+      if (!targetPage.undoStack) targetPage.undoStack = [];
+      if (!targetPage.redoStack) targetPage.redoStack = [];
+
+      targetPage.undoStack.push(snapshot);
+      if (targetPage.undoStack.length > MAX_HISTORY) {
+        targetPage.undoStack.shift();
+      }
+      targetPage.redoStack = [];
+      if (pageIdx === currentPageIndex) updateUndoRedoButtons();
+    }
+
+    function recordUndoStep(pageIdx = currentPageIndex) {
+      pushHistorySnapshot(capturePageState(pageIdx), pageIdx);
+    }
+
+    function updateUndoRedoButtons() {
+      const page = pages[currentPageIndex];
+      const canUndo = page && page.undoStack && page.undoStack.length > 0;
+      const canRedo = page && page.redoStack && page.redoStack.length > 0;
+      undoBtn.disabled = !canUndo;
+      redoBtn.disabled = !canRedo;
+    }
+
+    function resetSelectionState() {
+      selectedPaths = [];
+      selectedImages = [];
+      groupBounds = null;
+      origGroupBounds = null;
+      selectionBox = null;
+      isSelecting = false;
+      interactionState = null;
+      topRightMenuWrapper.style.display = 'none';
+      objectMenu.classList.remove('show');
+      opacitySubPanel.classList.remove('show');
+      canvasMenu.style.display = 'none';
+    }
+
+    function undoAction() {
+      const page = pages[currentPageIndex];
+      if (!page || !page.undoStack || page.undoStack.length === 0) return;
+
+      const currentSnapshot = capturePageState(currentPageIndex);
+      page.redoStack.push(currentSnapshot);
+      const prevSnapshot = page.undoStack.pop();
+
+      resetSelectionState();
+      restorePageState(prevSnapshot, currentPageIndex);
+      updateUndoRedoButtons();
+      redraw();
+      saveProgress();
+    }
+
+    function redoAction() {
+      const page = pages[currentPageIndex];
+      if (!page || !page.redoStack || page.redoStack.length === 0) return;
+
+      const currentSnapshot = capturePageState(currentPageIndex);
+      page.undoStack.push(currentSnapshot);
+      const nextSnapshot = page.redoStack.pop();
+
+      resetSelectionState();
+      restorePageState(nextSnapshot, currentPageIndex);
+      updateUndoRedoButtons();
+      redraw();
+      saveProgress();
+    }
+
+    undoBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      undoAction();
+    });
+
+    redoBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      redoAction();
+    });
+    // =========================================================
+
     function scheduleRedraw() {
       if (redrawPending) return;
       redrawPending = true;
@@ -887,7 +1084,7 @@
     }
 
     // =========================================================
-    // 大容量儲存（IndexedDB 優先，避免 iPad Safari 5MB 上限）
+    // 大容量儲存（IndexedDB 優先，避免 5MB 上限）
     // =========================================================
     function openWhiteboardDB() {
       return new Promise((resolve, reject) => {
@@ -946,25 +1143,26 @@
       }
 
       if (parsedPages && parsedPages.length > 0) {
-        pages = parsedPages.map(p => ({ paths: p.paths || [], images: [] }));
+        pages = parsedPages.map(p => ({ paths: p.paths || [], images: [], undoStack: [], redoStack: [] }));
         parsedPages.forEach((p, pIdx) => {
           if (p.images && p.images.length > 0) {
             p.images.forEach(imgItem => {
-              const img = new Image();
-              img.onload = () => {
-                pages[pIdx].images.push({
-                  img: img, x: imgItem.x, y: imgItem.y, w: imgItem.w, h: imgItem.h,
-                  src: imgItem.src,
-                  opacity: imgItem.opacity !== undefined ? imgItem.opacity : 1.0,
-                  rotation: imgItem.rotation || 0
-                });
+              const img = getCachedImage(imgItem.src, () => {
                 if (pIdx === currentPageIndex) redraw();
-              };
-              img.src = imgItem.src;
+              });
+              pages[pIdx].images.push({
+                img: img, x: imgItem.x, y: imgItem.y, w: imgItem.w, h: imgItem.h,
+                src: imgItem.src,
+                opacity: imgItem.opacity !== undefined ? imgItem.opacity : 1.0,
+                rotation: imgItem.rotation || 0
+              });
+              if (img.complete && pIdx === currentPageIndex) redraw();
             });
           }
         });
         switchPage(0);
+      } else {
+        updateUndoRedoButtons();
       }
     }
 
@@ -996,16 +1194,19 @@
     function switchPage(index) {
       if (index < 0 || index >= pages.length) return;
       currentPageIndex = index;
+      if (!pages[currentPageIndex].undoStack) pages[currentPageIndex].undoStack = [];
+      if (!pages[currentPageIndex].redoStack) pages[currentPageIndex].redoStack = [];
       paths = pages[currentPageIndex].paths;
       images = pages[currentPageIndex].images;
       selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null;
       opacitySubPanel.classList.remove('show');
       updatePageIndicator();
+      updateUndoRedoButtons();
       redraw();
     }
 
     newPageBtn.addEventListener('click', () => {
-      pages.push({ paths: [], images: [] });
+      pages.push({ paths: [], images: [], undoStack: [], redoStack: [] });
       switchPage(pages.length - 1);
       saveProgress();
     });
@@ -1055,10 +1256,13 @@
       return { w, h, cw, ch };
     }
 
-    function placeDataUrlOnPage(pageIdx, dataUrl, dropPos, offsetIdx = 0, centerOnPage = false) {
+    function placeDataUrlOnPage(pageIdx, dataUrl, dropPos, offsetIdx = 0, centerOnPage = false, recordUndo = true) {
       return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
+          imageCache.set(dataUrl, img);
+          if (recordUndo) recordUndoStep(pageIdx);
+
           const { w, h, cw, ch } = calculateFittedSize(img.naturalWidth || img.width, img.naturalHeight || img.height);
           let x, y;
           if (centerOnPage || !dropPos) {
@@ -1096,7 +1300,7 @@
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = async (ev) => {
-          await placeDataUrlOnPage(currentPageIndex, ev.target.result, dropPos, offsetIdx, centerOnPage);
+          await placeDataUrlOnPage(currentPageIndex, ev.target.result, dropPos, offsetIdx, centerOnPage, true);
           resolve();
         };
         reader.onerror = () => resolve();
@@ -1119,7 +1323,6 @@
         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
           showLoadingToast(`正在匯入 PDF（第 ${pageNum} / ${totalPages} 頁）...`);
           const page = await pdf.getPage(pageNum);
-          // iPad 上使用適中解析度（1.6x）兼顧清晰度與記憶體穩定性
           const viewport = page.getViewport({ scale: 1.6 });
 
           const offCanvas = document.createElement('canvas');
@@ -1135,10 +1338,10 @@
 
           let targetPageIdx = startPageIdx + (pageNum - 1);
           if (targetPageIdx >= pages.length) {
-            pages.push({ paths: [], images: [] });
+            pages.push({ paths: [], images: [], undoStack: [], redoStack: [] });
           }
 
-          await placeDataUrlOnPage(targetPageIdx, dataUrl, null, 0, true);
+          await placeDataUrlOnPage(targetPageIdx, dataUrl, null, 0, true, true);
         }
 
         switchPage(startPageIdx);
@@ -1180,7 +1383,6 @@
       }
     }
 
-    // iPad 點擊「開啟」按鈕選取檔案
     openFileBtn.addEventListener('click', () => {
       filePickerInput.value = '';
       filePickerInput.click();
@@ -1192,7 +1394,6 @@
       }
     });
 
-    // 支援 iPad 剪貼簿直接貼上圖片
     window.addEventListener('paste', (e) => {
       if (loginOverlay.style.display !== 'none' || bootScreen.style.display !== 'none') return;
       if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
@@ -1201,7 +1402,6 @@
       }
     });
 
-    // 阻止瀏覽器預設拖曳開啟檔案行為
     window.addEventListener('dragover', (e) => e.preventDefault());
     window.addEventListener('drop', (e) => e.preventDefault());
 
@@ -1270,7 +1470,7 @@
       ctx.fillRect(0, 0, width, height);
 
       images.forEach(imgObj => {
-        if (imgObj.img) {
+        if (imgObj.img && imgObj.img.complete && imgObj.img.naturalWidth > 0) {
           ctx.save();
           ctx.globalAlpha = imgObj.opacity !== undefined ? imgObj.opacity : 1.0;
           if (imgObj.rotation) {
@@ -1436,7 +1636,6 @@
           smoothedSpeed = smoothedSpeed * 0.68 + speed * 0.32;
         }
 
-        // 若有 Apple Pencil 感壓值（pt.p），融合筆壓與運筆速度
         const velocityFactor = 1 / (1 + Math.pow(smoothedSpeed / 7.5, 1.35));
         const combinedFactor = (points[i].p !== null && points[i].p !== undefined)
           ? (velocityFactor * 0.45 + Math.min(1, Math.max(0, points[i].p * 1.15)) * 0.55)
@@ -1578,8 +1777,13 @@
       opacityValText.textContent = opacityRange.value + '%';
     });
 
+    opacityRange.addEventListener('pointerdown', () => {
+      opacityDragSnapshot = capturePageState();
+    });
+
     opacityRange.addEventListener('input', (e) => {
       e.stopPropagation();
+      if (!opacityDragSnapshot) opacityDragSnapshot = capturePageState();
       const val = parseInt(e.target.value) / 100;
       opacityValText.textContent = e.target.value + '%';
       selectedImages.forEach(img => img.opacity = val);
@@ -1588,13 +1792,31 @@
       scheduleRedraw(); saveProgress();
     });
 
+    opacityRange.addEventListener('change', () => {
+      if (opacityDragSnapshot && !isSamePageState(opacityDragSnapshot, capturePageState())) {
+        pushHistorySnapshot(opacityDragSnapshot);
+      }
+      opacityDragSnapshot = null;
+    });
+
     document.getElementById('menuSelect').addEventListener('click', () => { objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); });
-    document.getElementById('menuDelete').addEventListener('click', () => { deleteSelected(); objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); });
+    document.getElementById('menuDelete').addEventListener('click', () => {
+      recordUndoStep();
+      deleteSelected();
+      objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show');
+    });
     document.getElementById('menuCopy').addEventListener('click', () => { copySelected(); objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); });
-    document.getElementById('menuCut').addEventListener('click', () => { copySelected(); deleteSelected(); objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); });
+    document.getElementById('menuCut').addEventListener('click', () => {
+      recordUndoStep();
+      copySelected();
+      deleteSelected();
+      objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show');
+    });
     
     document.getElementById('menuPaste').addEventListener('click', (e) => {
-      e.stopPropagation(); pasteClipboardAt(menuOpenPos.x, menuOpenPos.y); canvasMenu.style.display = 'none';
+      e.stopPropagation();
+      pasteClipboardAt(menuOpenPos.x, menuOpenPos.y);
+      canvasMenu.style.display = 'none';
     });
 
     function deleteSelected() {
@@ -1607,11 +1829,14 @@
 
     function copySelected() {
       clipboard.paths = JSON.parse(JSON.stringify(selectedPaths));
-      clipboard.images = JSON.parse(JSON.stringify(selectedImages));
+      clipboard.images = selectedImages.map(img => ({
+        x: img.x, y: img.y, w: img.w, h: img.h, src: img.src, opacity: img.opacity, rotation: img.rotation
+      }));
     }
 
     function pasteClipboardAt(posX, posY) {
       if (clipboard.paths.length === 0 && clipboard.images.length === 0) return;
+      recordUndoStep();
       selectedPaths = []; selectedImages = [];
       let minX = Infinity, minY = Infinity;
       clipboard.paths.forEach(p => p.points.forEach(pt => { if(pt.x < minX) minX = pt.x; if(pt.y < minY) minY = pt.y; }));
@@ -1623,10 +1848,16 @@
         newP.points.forEach(pt => { pt.x += offsetX; pt.y += offsetY; });
         paths.push(newP); selectedPaths.push(newP);
       });
+      if (clipboard.images.length === 0) {
+        pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+        updateGroupBounds(); prepareTransformBackup(); redraw(); saveProgress();
+        return;
+      }
       let loadedCount = 0;
       clipboard.images.forEach(item => {
         const img = new Image();
         img.onload = () => {
+          imageCache.set(item.src, img);
           const newImgObj = { img: img, x: item.x + offsetX, y: item.y + offsetY, w: item.w, h: item.h, src: item.src, opacity: item.opacity, rotation: item.rotation };
           images.push(newImgObj); selectedImages.push(newImgObj); loadedCount++;
           if (loadedCount === clipboard.images.length) {
@@ -1636,10 +1867,6 @@
         };
         img.src = item.src;
       });
-      if (clipboard.images.length === 0) {
-        pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
-        updateGroupBounds(); prepareTransformBackup(); redraw(); saveProgress();
-      }
     }
 
     function prepareTransformBackup() {
@@ -1685,7 +1912,6 @@
           console.log("外部螢幕擷取未啟用，改用白板局部擷取", err);
         }
       }
-      // iPad Safari 支援白板畫面直接局部圈選複製
       launchSnippingWithImage(canvas.toDataURL('image/png'));
     });
 
@@ -1744,6 +1970,8 @@
         const dataUrl = cropCanvas.toDataURL('image/png');
         const newImg = new Image();
         newImg.onload = () => {
+          imageCache.set(dataUrl, newImg);
+          recordUndoStep();
           images.push({ img: newImg, x: rx + 16, y: ry + 16, w: rw, h: rh, src: dataUrl, opacity: 1.0, rotation: 0 });
           pages[currentPageIndex].images = images; redraw(); saveProgress();
         };
@@ -1881,7 +2109,6 @@
 
     function hitTestHandle(pos) {
       if (!groupBounds) return null;
-      // 放大觸控感應半徑，方便在 iPad 上用手指或 Apple Pencil 精準拖曳
       const rotX = groupBounds.x + groupBounds.w / 2, rotY = groupBounds.y - 26;
       if (Math.hypot(pos.x - rotX, pos.y - rotY) < 18) return 'rotating';
 
@@ -1925,6 +2152,7 @@
         if (groupBounds) {
           const handle = hitTestHandle(pos);
           if (handle) {
+            pendingHistorySnapshot = capturePageState();
             interactionState = handle;
             dragStartX = pos.x; dragStartY = pos.y;
             prepareTransformBackup();
@@ -1936,6 +2164,7 @@
             return;
           }
           if (pos.x >= groupBounds.x && pos.x <= groupBounds.x + groupBounds.w && pos.y >= groupBounds.y && pos.y <= groupBounds.y + groupBounds.h) {
+            pendingHistorySnapshot = capturePageState();
             interactionState = 'dragging';
             dragStartX = pos.x; dragStartY = pos.y;
             prepareTransformBackup();
@@ -1946,6 +2175,7 @@
         }
         const hit = hitTestObject(pos);
         if (hit) {
+          pendingHistorySnapshot = capturePageState();
           selectedPaths = hit.type === 'path' ? [hit.obj] : [];
           selectedImages = hit.type === 'image' ? [hit.obj] : [];
           updateGroupBounds(); prepareTransformBackup(); interactionState = 'dragging';
@@ -1959,6 +2189,7 @@
         objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); redraw();
       } else {
         isDrawing = true;
+        pendingHistorySnapshot = capturePageState();
         if (currentTool === 'pen') {
           const stampedPos = { x: pos.x, y: pos.y, t: performance.now(), p: pos.p };
           currentPath = { type: penType, color: currentColor, size: parseInt(sizeRange.value), points: [stampedPos], opacity: 1.0, rotation: 0 };
@@ -2131,6 +2362,10 @@
           canvas.style.cursor = 'default';
           prepareTransformBackup();
           redraw();
+          if (pendingHistorySnapshot && !isSamePageState(pendingHistorySnapshot, capturePageState())) {
+            pushHistorySnapshot(pendingHistorySnapshot);
+          }
+          pendingHistorySnapshot = null;
           saveProgress();
         } else if (isSelecting) {
           isSelecting = false;
@@ -2156,11 +2391,15 @@
           paths = paths.filter(p => !p.points.some(pt => isPointInPolygon(pt, lassoPoints)));
           pages[currentPageIndex].paths = paths; lassoPoints = []; redraw();
         } else if (currentTool === 'eraser' && eraserType === 'lasso') { lassoPoints = []; redraw(); }
+        if (pendingHistorySnapshot && !isSamePageState(pendingHistorySnapshot, capturePageState())) {
+          pushHistorySnapshot(pendingHistorySnapshot);
+        }
+        pendingHistorySnapshot = null;
+        currentPath = null;
         saveProgress();
       }
     }
 
-    // 統一使用 Pointer Events（同時支援 iPad 手指觸控、Apple Pencil 感壓與滑鼠）
     canvas.addEventListener('pointerdown', (e) => {
       if (e.button !== undefined && e.button !== 0 && e.button !== 2) return;
       if (activePointerId !== null && e.pointerType === 'touch') return;
@@ -2210,12 +2449,40 @@
     canvas.addEventListener('contextmenu', e => e.preventDefault());
 
     window.addEventListener('keydown', (e) => {
-      if (currentTool === 'select' && (selectedPaths.length > 0 || selectedImages.length > 0)) {
-        if (e.key === 'Delete' || e.key === 'Backspace') { deleteSelected(); saveProgress(); }
-        if ((e.ctrlKey || e.metaKey) && e.key === 'c') copySelected();
-        if ((e.ctrlKey || e.metaKey) && e.key === 'x') { copySelected(); deleteSelected(); saveProgress(); }
+      if (loginOverlay.style.display !== 'none' || bootScreen.style.display !== 'none') return;
+      const tag = document.activeElement && document.activeElement.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      // 快捷鍵：上一步 (Ctrl+Z / Cmd+Z) 與 下一步 (Ctrl+Y / Ctrl+Shift+Z / Cmd+Shift+Z)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undoAction();
+        return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'v') { pasteClipboardAt(); saveProgress(); }
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redoAction();
+        return;
+      }
+
+      if (currentTool === 'select' && (selectedPaths.length > 0 || selectedImages.length > 0)) {
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          recordUndoStep();
+          deleteSelected();
+          saveProgress();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') copySelected();
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
+          recordUndoStep();
+          copySelected();
+          deleteSelected();
+          saveProgress();
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        pasteClipboardAt();
+        saveProgress();
+      }
     });
 
     function eraseLocalSegmentAt(pos) {
@@ -2260,6 +2527,9 @@
     }
 
     clearBtn.addEventListener('click', () => {
+      if (paths.length > 0 || images.length > 0) {
+        recordUndoStep();
+      }
       pages[currentPageIndex].paths = []; pages[currentPageIndex].images = [];
       paths = pages[currentPageIndex].paths; images = pages[currentPageIndex].images;
       selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null;
