@@ -878,6 +878,7 @@
     let currentColor = '#000000';
     let penSize = 8;
     let eraserSize = 20;
+    let activeTouchEraserPos = null;
 
     let pages = [{ paths: [], images: [], undoStack: [], redoStack: [] }];
     let currentPageIndex = 0;
@@ -1582,6 +1583,38 @@
         for (let i = 1; i < lassoPoints.length; i++) ctx.lineTo(lassoPoints[i].x, lassoPoints[i].y);
         ctx.stroke(); ctx.restore();
       }
+
+      // 觸控或觸控筆使用一般橡皮擦時，即時繪製等比例橡皮擦圖示
+      if (currentTool === 'eraser' && eraserType === 'normal' && activeTouchEraserPos) {
+        const radius = getNormalEraserRadius();
+        const s = Math.min(124, Math.max(16, Math.round(radius * 2)));
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(activeTouchEraserPos.x, activeTouchEraserPos.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(220, 220, 220, 0.35)';
+        ctx.fill();
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 3]);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.translate(activeTouchEraserPos.x - s / 2, activeTouchEraserPos.y - s / 2);
+        ctx.scale(s / 24, s / 24);
+        ctx.fillStyle = '#ddd';
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        const bodyPath = new Path2D('M20 20H7L3 16C2 15 2 13 3 12L13 2l9 9-9 9z');
+        ctx.fill(bodyPath);
+        ctx.stroke(bodyPath);
+        ctx.beginPath();
+        ctx.moveTo(6, 11);
+        ctx.lineTo(12, 17);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     function drawSimplePath(points) {
@@ -1750,6 +1783,7 @@
     selectToolBtn.addEventListener('click', () => {
       currentTool = 'select'; selectToolBtn.classList.add('active');
       penMenuBtn.classList.remove('active'); eraserMenuBtn.classList.remove('active');
+      activeTouchEraserPos = null;
       canvas.style.cursor = '';
       canvas.className = 'select-cursor'; penDropdown.classList.remove('show-sub'); eraserDropdown.classList.remove('show-sub');
       advancedPanel.classList.remove('show'); redraw();
@@ -2060,10 +2094,29 @@
       if (!canvasMenu.contains(e.target)) canvasMenu.style.display = 'none';
     });
 
+    function getNormalEraserRadius() {
+      return Math.max(6, eraserSize * 1.2);
+    }
+
+    function updateEraserCursor() {
+      if (currentTool === 'eraser' && eraserType === 'normal') {
+        const diameter = Math.round(getNormalEraserRadius() * 2);
+        const s = Math.min(124, Math.max(16, diameter));
+        const half = Math.round(s / 2);
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 24 24" fill="%23ddd" stroke="%23333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16C2 15 2 13 3 12L13 2l9 9-9 9z"/><path d="M6 11l6 6"/></svg>`;
+        canvas.className = '';
+        canvas.style.cursor = `url('data:image/svg+xml;utf8,${svg}') ${half} ${half}, auto`;
+      } else if (currentTool === 'eraser') {
+        canvas.style.cursor = '';
+        canvas.className = 'eraser-cursor';
+      }
+    }
+
     function setPenType(type) {
       const wasEraser = (currentTool === 'eraser');
       currentTool = 'pen'; selectToolBtn.classList.remove('active');
       penType = type; penMenuBtn.classList.add('active'); eraserMenuBtn.classList.remove('active');
+      activeTouchEraserPos = null;
       document.querySelectorAll('#penDropdown .sub-menu button').forEach(b => b.classList.remove('active'));
       const activeId = 'type' + (
         type === 'normal' ? 'Normal' :
@@ -2092,10 +2145,11 @@
     function setEraserType(type) {
       currentTool = 'eraser'; selectToolBtn.classList.remove('active');
       eraserType = type; eraserMenuBtn.classList.add('active'); penMenuBtn.classList.remove('active');
+      activeTouchEraserPos = null;
       document.querySelectorAll('#eraserDropdown .sub-menu button').forEach(b => b.classList.remove('active'));
       document.getElementById('erase' + (type === 'normal' ? 'Normal' : type === 'object' ? 'Object' : 'Lasso')).classList.add('active');
-      canvas.style.cursor = '';
-      canvas.className = 'eraser-cursor'; sizeRange.value = eraserSize; updateSizeUI(eraserSize);
+      sizeRange.value = eraserSize; updateSizeUI(eraserSize);
+      updateEraserCursor();
       syncAdvancedPanelForTool();
       selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null; redraw();
     }
@@ -2113,8 +2167,14 @@
     function updateSizeUI(val) {
       sizePreviewDot.style.width = Math.min(45, Math.max(4, val)) + 'px';
       sizePreviewDot.style.height = Math.min(45, Math.max(4, val)) + 'px';
-      if (currentTool === 'eraser') { eraserSize = parseInt(val); sizeLabelTitle.textContent = "橡皮擦大小調整"; }
-      else { penSize = parseInt(val); sizeLabelTitle.textContent = "筆大小調整"; }
+      if (currentTool === 'eraser') {
+        eraserSize = parseInt(val);
+        sizeLabelTitle.textContent = "橡皮擦大小調整";
+        updateEraserCursor();
+      } else {
+        penSize = parseInt(val);
+        sizeLabelTitle.textContent = "筆大小調整";
+      }
     }
 
     sizeRange.addEventListener('input', (e) => { e.stopPropagation(); updateSizeUI(sizeRange.value); });
@@ -2236,7 +2296,14 @@
           paths.push(currentPath); pages[currentPageIndex].paths = paths; scheduleRedraw();
         } else if (currentTool === 'eraser' && eraserType === 'lasso') { lassoPoints = [pos]; scheduleRedraw(); }
         else if (currentTool === 'eraser' && eraserType === 'object') { eraseObjectAt(pos); }
-        else if (currentTool === 'eraser' && eraserType === 'normal') { lastEraserPos = pos; eraseLocalSegmentAt(pos); }
+        else if (currentTool === 'eraser' && eraserType === 'normal') {
+          if (e.pointerType !== 'mouse') {
+            activeTouchEraserPos = pos;
+            scheduleRedraw();
+          }
+          lastEraserPos = pos;
+          eraseLocalSegmentAt(pos);
+        }
       }
     }
 
@@ -2387,6 +2454,10 @@
             scheduleRedraw();
           }
         } else if (currentTool === 'eraser' && eraserType === 'normal') {
+          if (e.pointerType !== 'mouse') {
+            activeTouchEraserPos = pos;
+            scheduleRedraw();
+          }
           if (lastEraserPos && Math.hypot(pos.x - lastEraserPos.x, pos.y - lastEraserPos.y) < 3) return;
           eraseLocalSegmentAt(pos); lastEraserPos = pos;
         } else if (currentTool === 'eraser' && eraserType === 'object') { eraseObjectAt(pos); }
@@ -2396,6 +2467,10 @@
 
     function endAction() {
       lastEraserPos = null;
+      if (activeTouchEraserPos) {
+        activeTouchEraserPos = null;
+        redraw();
+      }
       if (currentTool === 'select') {
         if (interactionState) {
           interactionState = null;
@@ -2526,7 +2601,7 @@
     });
 
     function eraseLocalSegmentAt(pos) {
-      const radius = Math.max(12, parseInt(sizeRange.value) * 1.2);
+      const radius = getNormalEraserRadius();
       let newPaths = [], changed = false;
       paths.forEach(p => {
         if (!p.points || p.points.length === 0) return;
