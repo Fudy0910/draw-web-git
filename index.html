@@ -83,7 +83,7 @@
       border-radius: 8px;
       background: #2b3137;
       color: white;
-      font-size: 16px; /* 16px 可避免 iPad Safari 聚焦時自動放大畫面 */
+      font-size: 16px;
       outline: none;
     }
     .login-box input:focus { border-color: #007bff; }
@@ -194,7 +194,7 @@
     }
     .scan-detail { font-size: 12px; color: #9ca3af; }
 
-    /* 工具列固定於右側，並支援 iPad 安全區與捲動 */
+    /* 工具列固定於右側 */
     .toolbar {
       background: #333;
       color: white;
@@ -250,7 +250,7 @@
     
     .dropdown-container { position: relative; width: 100%; display: flex; justify-content: center; flex-shrink: 0; }
     
-    /* 進階彈出面板（固定定位以便在可捲動工具列旁正常顯示） */
+    /* 進階彈出面板 */
     .advanced-panel {
       display: none;
       position: fixed;
@@ -575,7 +575,7 @@
       </div>
     </div>
 
-    <!-- 新增：上一步 / 下一步 功能鍵 -->
+    <!-- 上一步 / 下一步 功能鍵 -->
     <button id="undoBtn" title="上一步 (Ctrl+Z)" disabled>
       <svg class="icon" viewBox="0 0 24 24">
         <path d="M9 14L4 9l5-5"/>
@@ -833,6 +833,10 @@
     const panelCloseBtn = document.getElementById('panelCloseBtn');
     const panelTabs = document.querySelectorAll('.panel-tab');
     const tabContents = document.querySelectorAll('.tab-content');
+    const colorTabBtn = document.querySelector('.panel-tab[data-tab="colorTab"]');
+    const widthTabBtn = document.querySelector('.panel-tab[data-tab="widthTab"]');
+    const colorTabContent = document.getElementById('colorTab');
+    const widthTabContent = document.getElementById('widthTab');
     
     const sizeRange = document.getElementById('sizeRange');
     const sizeLabelTitle = document.getElementById('sizeLabelTitle');
@@ -1987,6 +1991,27 @@
       popupEl.style.top = Math.min(window.innerHeight - 280, Math.max(12, rect.top)) + 'px';
     }
 
+    function syncAdvancedPanelForTool() {
+      if (currentTool === 'eraser') {
+        // 橡皮擦模式：隱藏調色盤，只顯示粗細（寬度）
+        colorTabBtn.style.display = 'none';
+        colorTabBtn.classList.remove('active');
+        colorTabContent.classList.remove('active');
+
+        widthTabBtn.style.display = '';
+        widthTabBtn.classList.add('active');
+        widthTabContent.classList.add('active');
+      } else if (currentTool === 'pen') {
+        // 畫筆模式：恢復顯示顏色與寬度兩個分頁
+        colorTabBtn.style.display = '';
+        widthTabBtn.style.display = '';
+        if (!colorTabBtn.classList.contains('active') && !widthTabBtn.classList.contains('active')) {
+          colorTabBtn.classList.add('active');
+          colorTabContent.classList.add('active');
+        }
+      }
+    }
+
     penMenuBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       positionPopupNearButton(penMenuBtn, penSubMenu);
@@ -2004,7 +2029,10 @@
     });
 
     colorBtn.addEventListener('click', (e) => {
+      // 選取模式下點擊笑臉毫無作用
+      if (currentTool === 'select') return;
       e.stopPropagation();
+      syncAdvancedPanelForTool();
       positionPopupNearButton(colorBtn, advancedPanel);
       advancedPanel.classList.toggle('show');
       penDropdown.classList.remove('show-sub');
@@ -2016,6 +2044,7 @@
     panelTabs.forEach(tab => {
       tab.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (currentTool === 'eraser' && tab.getAttribute('data-tab') === 'colorTab') return;
         panelTabs.forEach(t => t.classList.remove('active'));
         tabContents.forEach(c => c.classList.remove('active'));
         tab.classList.add('active');
@@ -2032,6 +2061,7 @@
     });
 
     function setPenType(type) {
+      const wasEraser = (currentTool === 'eraser');
       currentTool = 'pen'; selectToolBtn.classList.remove('active');
       penType = type; penMenuBtn.classList.add('active'); eraserMenuBtn.classList.remove('active');
       document.querySelectorAll('#penDropdown .sub-menu button').forEach(b => b.classList.remove('active'));
@@ -2043,6 +2073,15 @@
       document.getElementById(activeId).classList.add('active');
       canvas.style.cursor = '';
       canvas.className = 'brush-cursor'; sizeRange.value = penSize; updateSizeUI(penSize);
+      if (wasEraser) {
+        colorTabBtn.style.display = '';
+        colorTabBtn.classList.add('active');
+        colorTabContent.classList.add('active');
+        widthTabBtn.classList.remove('active');
+        widthTabContent.classList.remove('active');
+      } else {
+        syncAdvancedPanelForTool();
+      }
       selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null; redraw();
     }
     document.getElementById('typeNormal').addEventListener('click', (e) => { e.stopPropagation(); setPenType('normal'); penDropdown.classList.remove('show-sub'); });
@@ -2057,6 +2096,7 @@
       document.getElementById('erase' + (type === 'normal' ? 'Normal' : type === 'object' ? 'Object' : 'Lasso')).classList.add('active');
       canvas.style.cursor = '';
       canvas.className = 'eraser-cursor'; sizeRange.value = eraserSize; updateSizeUI(eraserSize);
+      syncAdvancedPanelForTool();
       selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null; redraw();
     }
     document.getElementById('eraseNormal').addEventListener('click', (e) => { e.stopPropagation(); setEraserType('normal'); eraserDropdown.classList.remove('show-sub'); });
