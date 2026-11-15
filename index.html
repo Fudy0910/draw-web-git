@@ -1,0 +1,2288 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="數位白板">
+  <title>數位白板</title>
+  
+  <!-- 網站頁籤圖示 (Favicon) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23333'><path d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z'/><path d='M7.5 13c1.38 0 2.5-1.12 2.5-2.5S8.88 8 7.5 8 5 9.12 5 10.5 6.12 13 7.5 13zm0-3c.28 0 .5.22.5.5s-.22.5-.5.5-.5-.22-.5-.5.22-.5.5-.5zM7.5 14c-1.83 0-5.5.92-5.5 2.75V19h11v-2.25C13 14.92 9.33 14 7.5 14zm9.5-6h-4v2h4V8zm0 4h-4v2h4v-2z'/></svg>">
+  <link id="appleTouchIcon" rel="apple-touch-icon" href="">
+  <link id="pwaManifest" rel="manifest" href="">
+
+  <!-- 引入 PDF.js 以支援直接在白板解析與開啟 PDF 檔案 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      background: #f0f0f0;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+
+    input[type="text"], input[type="password"] {
+      -webkit-user-select: text;
+      user-select: text;
+      touch-action: auto;
+    }
+
+    input[type="range"] {
+      touch-action: pan-x;
+    }
+    
+    /* 登入遮罩畫面 */
+    #loginOverlay {
+      position: fixed;
+      inset: 0;
+      background: #2b3137;
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .login-box {
+      background: #3a4146;
+      padding: 30px;
+      border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      color: white;
+      width: 100%;
+      max-width: 340px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      text-align: center;
+      position: relative;
+    }
+    .login-box h2 { font-size: 20px; margin-bottom: 4px; color: #ffc107; }
+    .login-box input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #555;
+      border-radius: 8px;
+      background: #2b3137;
+      color: white;
+      font-size: 16px; /* 16px 可避免 iPad Safari 聚焦時自動放大畫面 */
+      outline: none;
+    }
+    .login-box input:focus { border-color: #007bff; }
+    .login-box button {
+      width: 100%;
+      padding: 12px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .login-box button:hover { background: #0056b3; }
+    .login-error { color: #ff6b6b; font-size: 13px; display: none; }
+
+    /* 登入載入中動畫 Spinner */
+    #loginSpinner {
+      display: none;
+      width: 18px;
+      height: 18px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* 開機迎賓動畫遮罩 */
+    #bootScreen {
+      position: fixed;
+      inset: 0;
+      background: #1e2227;
+      z-index: 1000000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      color: white;
+      opacity: 1;
+      transition: opacity 1.5s ease;
+    }
+    #bootScreen h1 {
+      font-size: 32px;
+      letter-spacing: 2px;
+      color: #ffc107;
+      margin-bottom: 10px;
+      text-shadow: 0 0 15px rgba(255, 193, 7, 0.4);
+    }
+    #bootScreen p { font-size: 14px; color: #aaa; }
+
+    /* 登出掃毒動畫遮罩 */
+    #scanOverlay {
+      position: fixed;
+      inset: 0;
+      background: #111827;
+      z-index: 2000000;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #10b981;
+      font-family: monospace;
+    }
+    .radar-box {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      border: 2px solid #10b981;
+      border-radius: 50%;
+      margin-bottom: 20px;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+      overflow: hidden;
+    }
+    .radar-sweep {
+      position: absolute;
+      width: 100%; height: 100%;
+      background: conic-gradient(from 0deg, rgba(16, 185, 129, 0.4) 0deg, transparent 60deg);
+      border-radius: 50%;
+      animation: radarRotate 2s linear infinite;
+    }
+    @keyframes radarRotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .scan-status { font-size: 24px; font-weight: bold; letter-spacing: 1px; color: #34d399; margin-bottom: 10px; }
+    .scan-progress-bar {
+      width: 260px;
+      height: 8px;
+      background: #1f2937;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+      border: 1px solid #374151;
+    }
+    .scan-progress-fill {
+      width: 0%;
+      height: 100%;
+      background: #10b981;
+      transition: width 0.1s linear;
+    }
+    .scan-detail { font-size: 12px; color: #9ca3af; }
+
+    /* 工具列固定於右側，並支援 iPad 安全區與捲動 */
+    .toolbar {
+      background: #333;
+      color: white;
+      width: calc(72px + env(safe-area-inset-right));
+      padding: calc(10px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      z-index: 100;
+      flex-shrink: 0;
+      overflow-y: auto;
+      overflow-x: visible;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+    }
+    .toolbar::-webkit-scrollbar { display: none; }
+    .toolbar button, .toolbar label {
+      width: 56px;
+      min-height: 52px;
+      padding: 4px 2px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #555;
+      color: white;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .toolbar button:active { transform: scale(0.95); }
+    .toolbar button.active { background: #007bff; }
+    .toolbar button.danger { background: #dc3545; }
+    .toolbar button.success { background: #28a745; }
+    .toolbar button.info { background: #17a2b8; }
+    .toolbar button.warning { background: #ffc107; color: #333; font-weight: bold; }
+    .toolbar button.logout { background: #6c757d; }
+    .toolbar button.logout:hover { background: #5a6268; }
+
+    /* 圖示大小設定 */
+    .toolbar svg.icon { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    
+    .dropdown-container { position: relative; width: 100%; display: flex; justify-content: center; flex-shrink: 0; }
+    
+    /* 進階彈出面板（固定定位以便在可捲動工具列旁正常顯示） */
+    .advanced-panel {
+      display: none;
+      position: fixed;
+      right: calc(78px + env(safe-area-inset-right));
+      top: calc(140px + env(safe-area-inset-top));
+      width: 240px;
+      background: #2b3137;
+      border: 1px solid #444;
+      border-radius: 12px;
+      box-shadow: -4px 8px 20px rgba(0,0,0,0.45);
+      z-index: 400;
+      color: white;
+      padding: 10px;
+      font-size: 13px;
+    }
+    .advanced-panel.show { display: block; }
+    .panel-header { display: flex; border-bottom: 1px solid #444; margin-bottom: 10px; }
+    .panel-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; background: #333; color: #aaa; border: none; font-weight: bold; border-radius: 6px 6px 0 0; }
+    .panel-tab.active { background: #555; color: white; border-bottom: 2px solid #007bff; }
+    .panel-close { background: transparent; border: none; color: white; cursor: pointer; padding: 0 10px; font-size: 16px; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .color-grid-container { display: flex; flex-direction: column; gap: 6px; }
+    .color-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .color-box { width: 36px; height: 36px; border: 1px solid #7f9db9; cursor: pointer; border-radius: 6px; }
+    .color-box:active { transform: scale(0.92); border-color: #fff; }
+
+    .width-section { display: flex; flex-direction: column; gap: 10px; padding: 4px; }
+    .size-presets { display: flex; justify-content: space-between; gap: 6px; }
+    .size-preset-btn { flex: 1; height: 42px; background: #3a4146; border: 1px solid #555; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .size-preset-btn.active { border-color: #007bff; background: #007bff; }
+    .slider-row { display: flex; align-items: center; background: #3a4146; padding: 8px 10px; border-radius: 20px; justify-content: space-between; }
+    .slider-row input[type="range"] { width: 140px; cursor: pointer; }
+    .preview-box { height: 52px; background: #333; border: 1px solid #555; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+
+    .sub-menu {
+      display: none;
+      position: fixed;
+      right: calc(78px + env(safe-area-inset-right));
+      top: calc(110px + env(safe-area-inset-top));
+      background: #333;
+      border-radius: 10px;
+      box-shadow: -4px 8px 16px rgba(0,0,0,0.35);
+      padding: 8px;
+      z-index: 300;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .dropdown-container.show-sub .sub-menu { display: flex; }
+    .sub-menu button { background: #444; width: 54px; height: 54px; border-radius: 8px; justify-content: center; padding: 0; font-size: 18px; }
+    .sub-menu button.active { background: #007bff; }
+
+    .canvas-container { flex: 1; position: relative; background: #fff; width: 100%; height: 100%; overflow: hidden; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    canvas.brush-cursor { cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="%23333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>') 0 24, crosshair; }
+    canvas.eraser-cursor { cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="%23ddd" stroke="%23333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16C2 15 2 13 3 12L13 2l9 9-9 9z"/><path d="M6 11l6 6"/></svg>') 2 24, auto; }
+    canvas.select-cursor { cursor: default; }
+
+    /* 檔案拖移覆蓋提示框 */
+    #dropOverlay {
+      position: absolute;
+      inset: 14px;
+      border: 3px dashed #007bff;
+      border-radius: 14px;
+      background: rgba(0, 123, 255, 0.12);
+      backdrop-filter: blur(2px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 2500;
+      pointer-events: none;
+      color: #0056b3;
+    }
+    #dropOverlay.show { display: flex; }
+    .drop-card {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 22px 32px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+      text-align: center;
+      border: 1px solid #cce5ff;
+    }
+    .drop-card h3 { font-size: 18px; color: #007bff; margin-bottom: 6px; }
+    .drop-card p { font-size: 13px; color: #555; }
+
+    /* 檔案匯入進度提示條 */
+    #fileLoadingToast {
+      position: absolute;
+      top: calc(16px + env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(33, 37, 41, 0.92);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 24px;
+      font-size: 13px;
+      font-weight: bold;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      z-index: 2600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      white-space: nowrap;
+    }
+    .toast-spinner {
+      width: 15px;
+      height: 15px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #ffc107;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    #topRightMenuWrapper { position: absolute; display: none; z-index: 1000; }
+    .icon-dropdown-btn { width: 34px; height: 34px; background: #007bff; border: 2px solid white; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; }
+    .icon-dropdown-btn svg { width: 18px; height: 18px; fill: white; }
+    .floating-menu { position: absolute; top: 38px; right: 0; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: none; padding: 6px; flex-direction: column; gap: 4px; min-width: 130px; }
+    .floating-menu.show { display: flex; }
+    .floating-menu button, .floating-menu div { background: transparent; border: none; padding: 9px 12px; text-align: left; font-size: 14px; cursor: pointer; color: #333; border-radius: 6px; white-space: nowrap; height: auto; width: 100%; }
+    .floating-menu button:hover, .floating-menu button:active { background: #f0f0f0; color: #007bff; }
+
+    #opacitySubPanel { display: none; position: absolute; right: 135px; top: 0; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 10px; width: 165px; font-size: 13px; color: #333; z-index: 1010; }
+    #opacitySubPanel.show { display: block; }
+    #canvasMenu { position: absolute; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: none; z-index: 1000; padding: 6px; flex-direction: column; }
+    #canvasMenu button { background: transparent; border: none; padding: 9px 14px; text-align: left; font-size: 14px; cursor: pointer; color: #333; border-radius: 6px; height: auto; width: auto; }
+    #canvasMenu button:hover, #canvasMenu button:active { background: #f0f0f0; color: #007bff; }
+
+    /* 截圖層 */
+    #snippingLayer {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 99999;
+      display: none;
+      touch-action: none;
+      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 1v22M1 12h22" stroke="%23ffffff" stroke-width="4" stroke-linecap="square"/><path d="M12 1v22M1 12h22" stroke="%23000000" stroke-width="2" stroke-linecap="square"/></svg>') 0 0, crosshair;
+    }
+    .page-indicator { background: #444; color: #ffc107; padding: 6px 2px; border-radius: 6px; font-size: 11px; font-weight: bold; text-align: center; width: 56px; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+  <!-- 數位白板認證系統登入畫面 -->
+  <div id="loginOverlay">
+    <div class="login-box">
+      <h2>數位白板認證系統</h2>
+      <p style="font-size: 13px; color: #ccc;">請輸入授權帳號與密碼以開啟設定檔</p>
+      <input type="text" id="userInput" placeholder="請輸入使用者名稱" autocomplete="off" autocorrect="off" autocapitalize="off" value="">
+      <input type="password" id="passInput" placeholder="請輸入密碼" autocomplete="off" value="">
+      <div id="loginError" class="login-error">帳號或密碼錯誤，請重新輸入！</div>
+      <button id="loginBtn">
+        <span id="loginSpinner"></span>
+        <span id="loginBtnText">登入並開啟畫布</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 開機迎賓動畫與音樂畫面 -->
+  <div id="bootScreen">
+    <h1>Welcome Fudy</h1>
+    <p>正在初始化數位白板工作環境...</p>
+  </div>
+
+  <!-- 登出資安與 USB 掃毒動畫遮罩 -->
+  <div id="scanOverlay">
+    <div class="radar-box">
+      <div class="radar-sweep"></div>
+    </div>
+    <div class="scan-status" id="scanStatusText">正在檢查檔案</div>
+    <div class="scan-progress-bar">
+      <div class="scan-progress-fill" id="scanProgressFill"></div>
+    </div>
+    <div class="scan-detail" id="scanDetailText">掃描核心系統模組中... 0%</div>
+  </div>
+
+  <div class="canvas-container" id="canvasContainer">
+    <canvas id="paintCanvas" class="brush-cursor"></canvas>
+
+    <!-- 拖移檔案提示覆蓋層 -->
+    <div id="dropOverlay">
+      <div class="drop-card">
+        <h3>📂 放開以開啟檔案</h3>
+        <p>支援 PDF 文件、JPG、PNG、WEBP、GIF 等圖片格式</p>
+      </div>
+    </div>
+
+    <!-- 匯入進度提示 -->
+    <div id="fileLoadingToast">
+      <span class="toast-spinner"></span>
+      <span id="fileLoadingText">正在載入檔案...</span>
+    </div>
+    
+    <div id="topRightMenuWrapper">
+      <div id="iconDropdownBtn" class="icon-dropdown-btn" title="選單">
+        <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+      </div>
+      <div id="objectMenu" class="floating-menu">
+        <button id="menuSelect">📌 選取</button>
+        <button id="menuCopy">📋 複製</button>
+        <button id="menuCut">✂️ 剪下</button>
+        <button id="menuOpacity">透明度 👁️</button>
+        <button id="menuDelete" style="color:red;">🗑️ 刪除</button>
+
+        <div id="opacitySubPanel">
+          <div style="font-weight:bold; margin-bottom:4px;">透明度: <span id="opacityValText">100%</span></div>
+          <input type="range" id="opacityRange" min="10" max="100" value="100" style="width:100%; cursor:pointer;">
+        </div>
+      </div>
+    </div>
+
+    <div id="canvasMenu" class="floating-menu">
+      <button id="menuPaste">📥 貼上</button>
+    </div>
+  </div>
+
+  <canvas id="snippingLayer"></canvas>
+
+  <!-- 隱藏檔案選擇器（專供 iPad 點擊匯入 PDF 與圖片） -->
+  <input type="file" id="filePickerInput" accept=".pdf,application/pdf,image/*" multiple style="display:none;">
+
+  <!-- 右側工具列 -->
+  <div class="toolbar" id="mainToolbar">
+    <button id="logoutBtn" class="logout" title="登出系統">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        <polyline points="16 17 21 12 16 7"></polyline>
+        <line x1="21" y1="12" x2="9" y2="12"></line>
+      </svg>
+      登出
+    </button>
+
+    <button id="selectToolBtn" title="選取">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+    </button>
+
+    <div class="dropdown-container" id="penDropdown">
+      <button id="penMenuBtn" class="active" title="畫筆">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+      </button>
+      <div class="sub-menu" id="penSubMenu">
+        <button id="typeNormal" class="active" title="一般筆"><svg class="icon" viewBox="0 0 24 24"><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/></svg></button>
+        <button id="typeSoft" title="軟筆"><svg class="icon" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg></button>
+        <button id="typeHighlighter" title="螢光筆"><svg class="icon" viewBox="0 0 24 24"><path d="M9 11l-6 6v3h3l6-6m-3-3l3-3 6 6-3 3m-6-6l6 6"/></svg></button>
+        <button id="typeSparkle" title="一閃一閃筆">🌟</button>
+      </div>
+    </div>
+
+    <div class="dropdown-container" id="eraserDropdown">
+      <button id="eraserMenuBtn" title="橡皮擦"><svg class="icon" viewBox="0 0 24 24"><path d="M20 20H7L3 16C2 15 2 13 3 12L13 2l9 9-9 9z"/><path d="M6 11l6 6"/></svg></button>
+      <div class="sub-menu" id="eraserSubMenu">
+        <button id="eraseNormal" class="active" title="一般式"><svg class="icon" viewBox="0 0 24 24"><path d="M20 20H7L3 16C2 15 2 13 3 12L13 2l9 9-9 9z"/></svg></button>
+        <button id="eraseObject" title="物件式"><svg class="icon" viewBox="0 0 24 24"><polygon points="12 3 22 21 2 21"/></svg></button>
+        <button id="eraseLasso" title="圈起來式"><svg class="icon" viewBox="0 0 24 24"><path d="M20 20H7L3 16C2 15 2 13 3 12L13 2l9 9-9 9z"/><path d="M3 3c6 0 6 6 12 6" stroke-dasharray="3 3"/></svg></button>
+      </div>
+    </div>
+
+    <div class="dropdown-container" id="colorDropdownContainer">
+      <button id="colorBtn" title="顏色與寬度設定">
+        <svg class="icon" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+          <line x1="9" y1="9" x2="9.01" y2="9" stroke-width="2" stroke-linecap="round"/>
+          <line x1="15" y1="9" x2="15.01" y2="9" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+
+      <div class="advanced-panel" id="advancedPanel">
+        <div class="panel-header">
+          <button class="panel-tab active" data-tab="colorTab">顏色</button>
+          <button class="panel-tab" data-tab="widthTab">寬度</button>
+          <button class="panel-close" id="panelCloseBtn">✕</button>
+        </div>
+
+        <div class="tab-content active" id="colorTab">
+          <div class="color-grid-container">
+            <div class="color-grid" id="colorPalette">
+              <div class="color-box" style="background:#ff0000;" data-color="#ff0000"></div>
+              <div class="color-box" style="background:#ff6600;" data-color="#ff6600"></div>
+              <div class="color-box" style="background:#ffcc00;" data-color="#ffcc00"></div>
+              <div class="color-box" style="background:#ffff00;" data-color="#ffff00"></div>
+              <div class="color-box" style="background:#80ff80;" data-color="#80ff80"></div>
+              <div class="color-box" style="background:#00cc00;" data-color="#00cc00"></div>
+              <div class="color-box" style="background:#00ffff;" data-color="#00ffff"></div>
+              <div class="color-box" style="background:#3399ff;" data-color="#3399ff"></div>
+              <div class="color-box" style="background:#0000ff;" data-color="#0000ff"></div>
+              <div class="color-box" style="background:#9900cc;" data-color="#9900cc"></div>
+              <div class="color-box" style="background:#ff00ff;" data-color="#ff00ff"></div>
+              <div class="color-box" style="background:#ff99cc;" data-color="#ff99cc"></div>
+              <div class="color-box" style="background:#993300;" data-color="#993300"></div>
+              <div class="color-box" style="background:#808000;" data-color="#808000"></div>
+              <div class="color-box" style="background:#008080;" data-color="#008080"></div>
+              <div class="color-box" style="background:#000080;" data-color="#000080"></div>
+              <div class="color-box" style="background:#800080;" data-color="#800080"></div>
+              <div class="color-box" style="background:#808000;" data-color="#808080"></div>
+              <div class="color-box" style="background:#ffffff; border: 1px solid #7f9db9;" data-color="#ffffff"></div>
+              <div class="color-box" style="background:#000000;" data-color="#000000"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="widthTab">
+          <div class="width-section">
+            <div style="font-size: 12px; color: #aaa; margin-bottom: 2px;" id="sizeLabelTitle">筆大小調整</div>
+            <div class="size-presets">
+              <div class="size-preset-btn" data-size="3"><span style="width:4px;height:4px;background:white;border-radius:50%;"></span></div>
+              <div class="size-preset-btn" data-size="8"><span style="width:10px;height:10px;background:white;border-radius:50%;"></span></div>
+              <div class="size-preset-btn" data-size="20"><span style="width:18px;height:18px;background:white;border-radius:50%;"></span></div>
+            </div>
+            <div class="slider-row">
+              <span style="font-size:11px;">細</span>
+              <input type="range" id="sizeRange" min="1" max="50" value="8">
+              <span style="font-size:11px;">粗</span>
+            </div>
+            <div class="preview-box">
+              <div id="sizePreviewDot" style="width:8px; height:8px; background:white; border-radius:50%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button id="openFileBtn" class="info" title="開啟 PDF 或圖片檔案">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      開啟
+    </button>
+
+    <button id="screenshotBtn" class="info" title="局部擷取">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    </button>
+
+    <button id="prevPageBtn" title="上一頁">◀</button>
+    <span class="page-indicator" id="pageIndicator">1/1</span>
+    <button id="nextPageBtn" title="下一頁">▶</button>
+    
+    <button id="newPageBtn" class="info" title="新增頁面">
+      <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+
+    <button id="deletePageBtn" class="warning" title="刪除本頁">🗑️</button>
+    <button id="clearBtn" class="danger" title="清空畫布">清空</button>
+    <button id="saveBtn" class="success" title="儲存檔案">儲存</button>
+  </div>
+
+  <script>
+    // 動態產生 iPad 主畫面 PNG 圖示與 Web App Manifest
+    (function setupIpadPwaAssets() {
+      try {
+        const iconCanvas = document.createElement('canvas');
+        iconCanvas.width = 180;
+        iconCanvas.height = 180;
+        const ictx = iconCanvas.getContext('2d');
+        ictx.fillStyle = '#2b3137';
+        ictx.fillRect(0, 0, 180, 180);
+        ictx.strokeStyle = '#ffc107';
+        ictx.lineWidth = 10;
+        ictx.strokeRect(22, 28, 136, 108);
+        ictx.fillStyle = '#ffffff';
+        ictx.font = 'bold 28px sans-serif';
+        ictx.textAlign = 'center';
+        ictx.fillText('數位白板', 90, 92);
+        const pngIconUrl = iconCanvas.toDataURL('image/png');
+        document.getElementById('appleTouchIcon').href = pngIconUrl;
+
+        const manifest = {
+          name: "數位白板",
+          short_name: "數位白板",
+          display: "standalone",
+          orientation: "any",
+          background_color: "#2b3137",
+          theme_color: "#333333",
+          icons: [{ src: pngIconUrl, sizes: "180x180", type: "image/png" }]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+        document.getElementById('pwaManifest').href = URL.createObjectURL(manifestBlob);
+      } catch (e) {}
+    })();
+
+    // 設定 PDF.js Worker
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    const AUTH_DB = {
+      u1: "RnVkeQ==",
+      u2: "ZnVkeQ==",
+      p:  "MTAzMDkxMA=="
+    };
+    function decodeAuth(b64) {
+      try { return atob(b64); } catch(e) { return ""; }
+    }
+
+    const loginOverlay = document.getElementById('loginOverlay');
+    const bootScreen = document.getElementById('bootScreen');
+    const scanOverlay = document.getElementById('scanOverlay');
+
+    const userInput = document.getElementById('userInput');
+    const passInput = document.getElementById('passInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginBtnText = document.getElementById('loginBtnText');
+    const loginSpinner = document.getElementById('loginSpinner');
+    const loginError = document.getElementById('loginError');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    userInput.value = "";
+    passInput.value = "";
+
+    let sharedAudioCtx = null;
+    function getAudioCtx() {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return null;
+      if (!sharedAudioCtx) sharedAudioCtx = new AudioContext();
+      if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume();
+      return sharedAudioCtx;
+    }
+
+    function playBootSound() {
+      try {
+        const ac = getAudioCtx();
+        if (!ac) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          const osc = ac.createOscillator();
+          const gain = ac.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, ac.currentTime + idx * 0.1);
+
+          gain.gain.setValueAtTime(0, ac.currentTime + idx * 0.1);
+          gain.gain.linearRampToValueAtTime(0.15, ac.currentTime + idx * 0.1 + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + idx * 0.1 + 0.8);
+
+          osc.connect(gain);
+          gain.connect(ac.destination);
+
+          osc.start(ac.currentTime + idx * 0.1);
+          osc.stop(ac.currentTime + idx * 0.1 + 0.9);
+        });
+      } catch (e) {}
+    }
+
+    function playShutdownSound() {
+      try {
+        const ac = getAudioCtx();
+        if (!ac) return;
+        const notes = [1046.50, 783.99, 659.25, 523.25];
+        notes.forEach((freq, idx) => {
+          const osc = ac.createOscillator();
+          const gain = ac.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, ac.currentTime + idx * 0.12);
+
+          gain.gain.setValueAtTime(0, ac.currentTime + idx * 0.12);
+          gain.gain.linearRampToValueAtTime(0.15, ac.currentTime + idx * 0.12 + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + idx * 0.12 + 0.7);
+
+          osc.connect(gain);
+          gain.connect(ac.destination);
+
+          osc.start(ac.currentTime + idx * 0.12);
+          osc.stop(ac.currentTime + idx * 0.12 + 0.8);
+        });
+      } catch (e) {}
+    }
+
+    function triggerBootSequence() {
+      loginOverlay.style.display = 'none';
+      bootScreen.style.display = 'flex';
+      bootScreen.style.opacity = '1';
+      playBootSound();
+
+      setTimeout(() => { bootScreen.style.opacity = '0'; }, 1200);
+      setTimeout(() => {
+        bootScreen.style.display = 'none';
+        initCanvas();
+        loadProgress();
+        startSparkleAnimation();
+      }, 2700);
+    }
+
+    function checkLogin() {
+      getAudioCtx(); // 在 iPad 使用者點擊當下解鎖音效權限
+      loginError.style.display = 'none';
+      loginSpinner.style.display = 'inline-block';
+      loginBtnText.textContent = "驗證中...";
+      loginBtn.disabled = true;
+
+      setTimeout(() => {
+        const u = userInput.value.trim();
+        const p = passInput.value.trim();
+        const validU1 = decodeAuth(AUTH_DB.u1);
+        const validU2 = decodeAuth(AUTH_DB.u2);
+        const validP  = decodeAuth(AUTH_DB.p);
+
+        if ((u === validU1 || u === validU2) && p === validP) {
+          triggerBootSequence();
+        } else {
+          loginSpinner.style.display = 'none';
+          loginBtnText.textContent = "登入並開啟畫布";
+          loginBtn.disabled = false;
+          loginError.style.display = 'block';
+          passInput.value = '';
+          passInput.focus();
+        }
+      }, 600);
+    }
+
+    loginBtn.addEventListener('click', checkLogin);
+    passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkLogin(); });
+    userInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') passInput.focus(); });
+
+    logoutBtn.addEventListener('click', () => {
+      if (confirm("確定要登出數位白板系統嗎？")) {
+        playShutdownSound();
+        scanOverlay.style.display = 'flex';
+
+        const fill = document.getElementById('scanProgressFill');
+        const detail = document.getElementById('scanDetailText');
+        const status = document.getElementById('scanStatusText');
+        status.textContent = "正在檢查檔案";
+
+        const tasks = [
+          { p: 15, text: "正在掃描系統核心記憶體區塊..." },
+          { p: 35, text: "正在檢測連線埠與網路流量封包..." },
+          { p: 60, text: "正在掃描外接裝置與快取檔案..." },
+          { p: 85, text: "清除暫存數據與安全憑證..." },
+          { p: 100, text: "系統安全，準備登出。" }
+        ];
+
+        let idx = 0;
+        const interval = setInterval(() => {
+          if (idx < tasks.length) {
+            fill.style.width = tasks[idx].p + '%';
+            detail.textContent = `${tasks[idx].text} ${tasks[idx].p}%`;
+            idx++;
+          } else {
+            clearInterval(interval);
+            status.textContent = "檢查完成！環境安全。";
+            setTimeout(() => { window.location.reload(); }, 600);
+          }
+        }, 500);
+      }
+    });
+
+    const canvasContainer = document.getElementById('canvasContainer');
+    const canvas = document.getElementById('paintCanvas');
+    const ctx = canvas.getContext('2d');
+    const dropOverlay = document.getElementById('dropOverlay');
+    const fileLoadingToast = document.getElementById('fileLoadingToast');
+    const fileLoadingText = document.getElementById('fileLoadingText');
+    
+    const selectToolBtn = document.getElementById('selectToolBtn');
+    const penDropdown = document.getElementById('penDropdown');
+    const penMenuBtn = document.getElementById('penMenuBtn');
+    const penSubMenu = document.getElementById('penSubMenu');
+    const eraserDropdown = document.getElementById('eraserDropdown');
+    const eraserMenuBtn = document.getElementById('eraserMenuBtn');
+    const eraserSubMenu = document.getElementById('eraserSubMenu');
+    
+    const colorBtn = document.getElementById('colorBtn');
+    const advancedPanel = document.getElementById('advancedPanel');
+    const panelCloseBtn = document.getElementById('panelCloseBtn');
+    const panelTabs = document.querySelectorAll('.panel-tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    const sizeRange = document.getElementById('sizeRange');
+    const sizeLabelTitle = document.getElementById('sizeLabelTitle');
+    const sizePreviewDot = document.getElementById('sizePreviewDot');
+    const sizePresetBtns = document.querySelectorAll('.size-preset-btn');
+
+    const openFileBtn = document.getElementById('openFileBtn');
+    const filePickerInput = document.getElementById('filePickerInput');
+    const screenshotBtn = document.getElementById('screenshotBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const saveBtn = document.getElementById('saveBtn');
+
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+    const newPageBtn = document.getElementById('newPageBtn');
+    const deletePageBtn = document.getElementById('deletePageBtn');
+    const pageIndicator = document.getElementById('pageIndicator');
+
+    const snippingLayer = document.getElementById('snippingLayer');
+    const snipCtx = snippingLayer.getContext('2d');
+
+    const topRightMenuWrapper = document.getElementById('topRightMenuWrapper');
+    const iconDropdownBtn = document.getElementById('iconDropdownBtn');
+    const objectMenu = document.getElementById('objectMenu');
+    const canvasMenu = document.getElementById('canvasMenu');
+    const menuOpacity = document.getElementById('menuOpacity');
+    const opacitySubPanel = document.getElementById('opacitySubPanel');
+    const opacityRange = document.getElementById('opacityRange');
+    const opacityValText = document.getElementById('opacityValText');
+
+    let isDrawing = false;
+    let activePointerId = null;
+    let currentTool = 'pen';
+    let penType = 'normal';
+    let eraserType = 'normal';
+    let currentColor = '#000000';
+    let penSize = 8;
+    let eraserSize = 20;
+
+    let pages = [{ paths: [], images: [] }];
+    let currentPageIndex = 0;
+    let paths = pages[0].paths;
+    let images = pages[0].images;
+    let currentPath = null;
+    let lassoPoints = [];
+
+    let selectionBox = null;
+    let isSelecting = false;
+    let selectStartX = 0, selectStartY = 0;
+    let selectedPaths = [];
+    let selectedImages = [];
+    let interactionState = null;
+    let dragStartX = 0, dragStartY = 0;
+    let groupBounds = null;
+    let origGroupBounds = null;
+    let clipboard = { paths: [], images: [] };
+
+    let isSnipping = false;
+    let snipStartX = 0, snipStartY = 0, snipEndX = 0, snipEndY = 0;
+    let capturedScreenImg = null;
+    
+    let blankLongPressTimer = null;
+    let startPos = { x: 0, y: 0 };
+    let menuOpenPos = { x: 100, y: 100 };
+    let sparkleAnimFrame = null;
+    let redrawPending = false;
+
+    function scheduleRedraw() {
+      if (redrawPending) return;
+      redrawPending = true;
+      requestAnimationFrame(() => {
+        redrawPending = false;
+        redraw();
+      });
+    }
+
+    // =========================================================
+    // 大容量儲存（IndexedDB 優先，避免 iPad Safari 5MB 上限）
+    // =========================================================
+    function openWhiteboardDB() {
+      return new Promise((resolve, reject) => {
+        if (!window.indexedDB) return reject("No IndexedDB");
+        const req = indexedDB.open('fudy_whiteboard_db', 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('state')) {
+            db.createObjectStore('state');
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function saveProgress() {
+      const dataToSave = pages.map(page => ({
+        paths: page.paths,
+        images: page.images.map(img => ({
+          x: img.x, y: img.y, w: img.w, h: img.h,
+          src: img.src,
+          opacity: img.opacity !== undefined ? img.opacity : 1.0,
+          rotation: img.rotation || 0
+        }))
+      }));
+
+      try {
+        const db = await openWhiteboardDB();
+        const tx = db.transaction('state', 'readwrite');
+        tx.objectStore('state').put(dataToSave, 'fudy_canvas_progress');
+      } catch (err) {
+        try {
+          localStorage.setItem('fudy_canvas_progress', JSON.stringify(dataToSave));
+        } catch (e) {}
+      }
+    }
+
+    async function loadProgress() {
+      let parsedPages = null;
+      try {
+        const db = await openWhiteboardDB();
+        parsedPages = await new Promise((resolve) => {
+          const tx = db.transaction('state', 'readonly');
+          const req = tx.objectStore('state').get('fudy_canvas_progress');
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => resolve(null);
+        });
+      } catch (err) {}
+
+      if (!parsedPages) {
+        try {
+          const saved = localStorage.getItem('fudy_canvas_progress');
+          if (saved) parsedPages = JSON.parse(saved);
+        } catch (e) {}
+      }
+
+      if (parsedPages && parsedPages.length > 0) {
+        pages = parsedPages.map(p => ({ paths: p.paths || [], images: [] }));
+        parsedPages.forEach((p, pIdx) => {
+          if (p.images && p.images.length > 0) {
+            p.images.forEach(imgItem => {
+              const img = new Image();
+              img.onload = () => {
+                pages[pIdx].images.push({
+                  img: img, x: imgItem.x, y: imgItem.y, w: imgItem.w, h: imgItem.h,
+                  src: imgItem.src,
+                  opacity: imgItem.opacity !== undefined ? imgItem.opacity : 1.0,
+                  rotation: imgItem.rotation || 0
+                });
+                if (pIdx === currentPageIndex) redraw();
+              };
+              img.src = imgItem.src;
+            });
+          }
+        });
+        switchPage(0);
+      }
+    }
+
+    function initCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.parentElement.clientWidth;
+      const height = canvas.parentElement.clientHeight;
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+      redraw();
+    }
+
+    window.addEventListener('resize', () => {
+      if (loginOverlay.style.display === 'none' && bootScreen.style.display === 'none') initCanvas();
+    });
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => {
+        if (loginOverlay.style.display === 'none' && bootScreen.style.display === 'none') initCanvas();
+      }, 250);
+    });
+
+    function updatePageIndicator() {
+      pageIndicator.textContent = `${currentPageIndex + 1}/${pages.length}`;
+    }
+
+    function switchPage(index) {
+      if (index < 0 || index >= pages.length) return;
+      currentPageIndex = index;
+      paths = pages[currentPageIndex].paths;
+      images = pages[currentPageIndex].images;
+      selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null;
+      opacitySubPanel.classList.remove('show');
+      updatePageIndicator();
+      redraw();
+    }
+
+    newPageBtn.addEventListener('click', () => {
+      pages.push({ paths: [], images: [] });
+      switchPage(pages.length - 1);
+      saveProgress();
+    });
+
+    deletePageBtn.addEventListener('click', () => {
+      if (pages.length <= 1) {
+        if (confirm("目前只有 1 頁，是否要直接清空本頁內容？")) clearBtn.click();
+        return;
+      }
+      if (confirm(`確定要刪除「第 ${currentPageIndex + 1} 頁」嗎？`)) {
+        pages.splice(currentPageIndex, 1);
+        if (currentPageIndex >= pages.length) currentPageIndex = pages.length - 1;
+        switchPage(currentPageIndex);
+        saveProgress();
+      }
+    });
+
+    prevPageBtn.addEventListener('click', () => { if (currentPageIndex > 0) switchPage(currentPageIndex - 1); });
+    nextPageBtn.addEventListener('click', () => { if (currentPageIndex < pages.length - 1) switchPage(currentPageIndex + 1); });
+
+    // =========================================================
+    // 檔案開啟與拖移功能（支援 PDF、JPG、PNG、WEBP、GIF 等格式）
+    // =========================================================
+    let dragCounter = 0;
+
+    function showLoadingToast(text) {
+      fileLoadingText.textContent = text;
+      fileLoadingToast.style.display = 'flex';
+    }
+
+    function hideLoadingToast() {
+      fileLoadingToast.style.display = 'none';
+    }
+
+    function calculateFittedSize(natW, natH, maxRatioW = 0.80, maxRatioH = 0.86) {
+      const cw = canvas.parentElement.clientWidth || 800;
+      const ch = canvas.parentElement.clientHeight || 600;
+      const maxW = Math.max(120, cw * maxRatioW);
+      const maxH = Math.max(120, ch * maxRatioH);
+      let w = natW;
+      let h = natH;
+      if (w > maxW || h > maxH) {
+        const scale = Math.min(maxW / w, maxH / h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      }
+      return { w, h, cw, ch };
+    }
+
+    function placeDataUrlOnPage(pageIdx, dataUrl, dropPos, offsetIdx = 0, centerOnPage = false) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const { w, h, cw, ch } = calculateFittedSize(img.naturalWidth || img.width, img.naturalHeight || img.height);
+          let x, y;
+          if (centerOnPage || !dropPos) {
+            x = Math.max(10, Math.round((cw - w) / 2));
+            y = Math.max(10, Math.round((ch - h) / 2));
+          } else {
+            const cascade = offsetIdx * 24;
+            x = Math.min(Math.max(10, Math.round(dropPos.x - w / 2 + cascade)), Math.max(10, cw - w - 10));
+            y = Math.min(Math.max(10, Math.round(dropPos.y - h / 2 + cascade)), Math.max(10, ch - h - 10));
+          }
+
+          pages[pageIdx].images.push({
+            img: img,
+            x: x,
+            y: y,
+            w: w,
+            h: h,
+            src: dataUrl,
+            opacity: 1.0,
+            rotation: 0
+          });
+
+          if (pageIdx === currentPageIndex) {
+            images = pages[currentPageIndex].images;
+            redraw();
+          }
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = dataUrl;
+      });
+    }
+
+    function importImageFile(file, dropPos, offsetIdx, centerOnPage = false) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          await placeDataUrlOnPage(currentPageIndex, ev.target.result, dropPos, offsetIdx, centerOnPage);
+          resolve();
+        };
+        reader.onerror = () => resolve();
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function importPdfFile(file) {
+      if (!window.pdfjsLib) {
+        alert("PDF 解析模組尚未載入完成，請確認網路連線後再試一次。");
+        return;
+      }
+      showLoadingToast(`正在解析 PDF：${file.name}...`);
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const totalPages = pdf.numPages;
+        const startPageIdx = currentPageIndex;
+
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+          showLoadingToast(`正在匯入 PDF（第 ${pageNum} / ${totalPages} 頁）...`);
+          const page = await pdf.getPage(pageNum);
+          // iPad 上使用適中解析度（1.6x）兼顧清晰度與記憶體穩定性
+          const viewport = page.getViewport({ scale: 1.6 });
+
+          const offCanvas = document.createElement('canvas');
+          offCanvas.width = Math.round(viewport.width);
+          offCanvas.height = Math.round(viewport.height);
+          const offCtx = offCanvas.getContext('2d');
+
+          offCtx.fillStyle = '#ffffff';
+          offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+
+          await page.render({ canvasContext: offCtx, viewport: viewport }).promise;
+          const dataUrl = offCanvas.toDataURL('image/png');
+
+          let targetPageIdx = startPageIdx + (pageNum - 1);
+          if (targetPageIdx >= pages.length) {
+            pages.push({ paths: [], images: [] });
+          }
+
+          await placeDataUrlOnPage(targetPageIdx, dataUrl, null, 0, true);
+        }
+
+        switchPage(startPageIdx);
+        saveProgress();
+      } catch (err) {
+        console.error("PDF 匯入失敗：", err);
+        alert(`無法開啟 PDF 檔案「${file.name}」，請確認檔案未受密碼保護或未損毀。`);
+      } finally {
+        hideLoadingToast();
+      }
+    }
+
+    async function handleIncomingFiles(fileList, dropPos = null, centerOnPage = false) {
+      const files = Array.from(fileList || []);
+      if (files.length === 0) return;
+
+      const imageExtRegex = /\.(jpe?g|png|gif|webp|bmp|svg|ico|heic|heif|tiff?)$/i;
+      let imgOffset = 0;
+      let hasUnsupported = false;
+
+      for (const file of files) {
+        const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+        const isImg = (file.type && file.type.startsWith('image/')) || imageExtRegex.test(file.name);
+
+        if (isPdf) {
+          await importPdfFile(file);
+        } else if (isImg) {
+          showLoadingToast(`正在載入圖片：${file.name}...`);
+          await importImageFile(file, dropPos, imgOffset++, centerOnPage);
+          hideLoadingToast();
+        } else {
+          hasUnsupported = true;
+        }
+      }
+
+      saveProgress();
+      if (hasUnsupported) {
+        alert("部分檔案格式不支援！請選擇 PDF 或圖片檔（JPG、PNG、WEBP、GIF 等）。");
+      }
+    }
+
+    // iPad 點擊「開啟」按鈕選取檔案
+    openFileBtn.addEventListener('click', () => {
+      filePickerInput.value = '';
+      filePickerInput.click();
+    });
+
+    filePickerInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleIncomingFiles(e.target.files, null, true);
+      }
+    });
+
+    // 支援 iPad 剪貼簿直接貼上圖片
+    window.addEventListener('paste', (e) => {
+      if (loginOverlay.style.display !== 'none' || bootScreen.style.display !== 'none') return;
+      if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+        e.preventDefault();
+        handleIncomingFiles(e.clipboardData.files, null, true);
+      }
+    });
+
+    // 阻止瀏覽器預設拖曳開啟檔案行為
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => e.preventDefault());
+
+    canvasContainer.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (loginOverlay.style.display !== 'none' || bootScreen.style.display !== 'none') return;
+      if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes('Files')) {
+        dragCounter++;
+        dropOverlay.classList.add('show');
+      }
+    });
+
+    canvasContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    });
+
+    canvasContainer.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        dropOverlay.classList.remove('show');
+      }
+    });
+
+    canvasContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter = 0;
+      dropOverlay.classList.remove('show');
+      if (loginOverlay.style.display !== 'none' || bootScreen.style.display !== 'none') return;
+
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const rect = canvas.getBoundingClientRect();
+        const dropPos = {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        };
+        handleIncomingFiles(e.dataTransfer.files, dropPos, false);
+      }
+    });
+    // =========================================================
+
+    function startSparkleAnimation() {
+      if (sparkleAnimFrame) cancelAnimationFrame(sparkleAnimFrame);
+      function loop() {
+        const hasSparkle = paths.some(p => p.type === 'sparkle');
+        if (hasSparkle && !interactionState) {
+          scheduleRedraw();
+        }
+        sparkleAnimFrame = requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    function redraw() {
+      const width = canvas.parentElement.clientWidth;
+      const height = canvas.parentElement.clientHeight;
+      ctx.clearRect(0, 0, width, height);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      images.forEach(imgObj => {
+        if (imgObj.img) {
+          ctx.save();
+          ctx.globalAlpha = imgObj.opacity !== undefined ? imgObj.opacity : 1.0;
+          if (imgObj.rotation) {
+            const cx = imgObj.x + imgObj.w / 2, cy = imgObj.y + imgObj.h / 2;
+            ctx.translate(cx, cy); ctx.rotate(imgObj.rotation); ctx.translate(-cx, -cy);
+          }
+          ctx.drawImage(imgObj.img, imgObj.x, imgObj.y, imgObj.w, imgObj.h);
+          ctx.restore();
+        }
+      });
+
+      paths.forEach(p => {
+        if (!p.points || p.points.length === 0) return;
+        ctx.save();
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        let pathOpacity = p.opacity !== undefined ? p.opacity : 1.0;
+
+        if (p.rotation) {
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          p.points.forEach(pt => {
+            if (pt.x < minX) minX = pt.x; if (pt.y < minY) minY = pt.y;
+            if (pt.x > maxX) maxX = pt.x; if (pt.y > maxY) maxY = pt.y;
+          });
+          const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+          ctx.translate(cx, cy); ctx.rotate(p.rotation); ctx.translate(-cx, -cy);
+        }
+
+        if (p.type === 'highlighter') {
+          ctx.strokeStyle = p.color; ctx.lineWidth = p.size * 2.5; ctx.globalAlpha = 0.22 * pathOpacity;
+          drawSimplePath(p.points);
+        } else if (p.type === 'soft') {
+          ctx.strokeStyle = p.color; ctx.globalAlpha = pathOpacity;
+          drawSoftPath(p.points, p.size);
+        } else if (p.type === 'sparkle') {
+          drawSparklePath(p, pathOpacity);
+        } else {
+          ctx.strokeStyle = p.color; ctx.lineWidth = p.size; ctx.globalAlpha = pathOpacity;
+          drawSimplePath(p.points);
+        }
+        ctx.restore();
+      });
+
+      if (currentTool === 'select') {
+        if (isSelecting) {
+          ctx.save();
+          ctx.strokeStyle = '#007bff'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+          ctx.strokeRect(selectionBox.x, selectionBox.y, selectionBox.w, selectionBox.h);
+          ctx.fillStyle = 'rgba(0, 123, 255, 0.08)'; ctx.fillRect(selectionBox.x, selectionBox.y, selectionBox.w, selectionBox.h);
+          ctx.restore();
+        } else if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0)) {
+          ctx.save();
+          ctx.strokeStyle = '#007bff'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
+          ctx.strokeRect(groupBounds.x, groupBounds.y, groupBounds.w, groupBounds.h);
+
+          const handleSize = 10;
+          ctx.setLineDash([]);
+
+          // 旋轉控制點（上方綠色圓點）
+          const rotX = groupBounds.x + groupBounds.w / 2, rotY = groupBounds.y - 26;
+          ctx.beginPath(); ctx.moveTo(rotX, groupBounds.y); ctx.lineTo(rotX, rotY);
+          ctx.strokeStyle = '#007bff'; ctx.lineWidth = 1.5; ctx.stroke();
+          ctx.fillStyle = '#28a745'; ctx.beginPath(); ctx.arc(rotX, rotY, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+          // 上下調整控制點（上邊中點與下邊中點）
+          const nX = groupBounds.x + groupBounds.w / 2, nY = groupBounds.y;
+          const sX = groupBounds.x + groupBounds.w / 2, sY = groupBounds.y + groupBounds.h;
+          ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#007bff'; ctx.lineWidth = 2;
+          ctx.fillRect(nX - 7, nY - 3.5, 14, 7);
+          ctx.strokeRect(nX - 7, nY - 3.5, 14, 7);
+          ctx.fillRect(sX - 7, sY - 3.5, 14, 7);
+          ctx.strokeRect(sX - 7, sY - 3.5, 14, 7);
+
+          // 左右調整控制點（左邊中點與右邊中點）
+          const wX = groupBounds.x, wY = groupBounds.y + groupBounds.h / 2;
+          const eX = groupBounds.x + groupBounds.w, eY = groupBounds.y + groupBounds.h / 2;
+          ctx.fillRect(wX - 3.5, wY - 7, 7, 14);
+          ctx.strokeRect(wX - 3.5, wY - 7, 7, 14);
+          ctx.fillRect(eX - 3.5, eY - 7, 7, 14);
+          ctx.strokeRect(eX - 3.5, eY - 7, 7, 14);
+
+          // 左下角等比例縮放控制點（黃色方塊）
+          const swX = groupBounds.x, swY = groupBounds.y + groupBounds.h;
+          ctx.fillStyle = '#ffc107'; ctx.strokeStyle = '#007bff'; ctx.lineWidth = 2;
+          ctx.fillRect(swX - handleSize/2, swY - handleSize/2, handleSize, handleSize);
+          ctx.strokeRect(swX - handleSize/2, swY - handleSize/2, handleSize, handleSize);
+
+          ctx.restore();
+
+          topRightMenuWrapper.style.display = 'block';
+          topRightMenuWrapper.style.left = Math.min(width - 42, Math.max(8, groupBounds.x + groupBounds.w - 17)) + 'px';
+          topRightMenuWrapper.style.top = Math.max(8, groupBounds.y - 38) + 'px';
+        } else {
+          topRightMenuWrapper.style.display = 'none';
+          objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show');
+        }
+      } else {
+        topRightMenuWrapper.style.display = 'none';
+        objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show');
+      }
+
+      if (currentTool === 'eraser' && eraserType === 'lasso' && lassoPoints.length > 1) {
+        ctx.save();
+        ctx.strokeStyle = '#ff0000'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
+        ctx.beginPath(); ctx.moveTo(lassoPoints[0].x, lassoPoints[0].y);
+        for (let i = 1; i < lassoPoints.length; i++) ctx.lineTo(lassoPoints[i].x, lassoPoints[i].y);
+        ctx.stroke(); ctx.restore();
+      }
+    }
+
+    function drawSimplePath(points) {
+      if (points.length === 1) {
+        ctx.beginPath();
+        ctx.arc(points[0].x, points[0].y, ctx.lineWidth / 2, 0, Math.PI * 2);
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.fill();
+        return;
+      }
+      ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+      ctx.stroke();
+    }
+
+    function drawSoftPath(points, baseSize) {
+      const n = points.length;
+      if (n === 0) return;
+      if (n === 1) {
+        const pFactor = points[0].p ? (0.4 + points[0].p * 0.8) : 0.42;
+        ctx.beginPath();
+        ctx.arc(points[0].x, points[0].y, Math.max(1, baseSize * pFactor), 0, Math.PI * 2);
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.fill();
+        return;
+      }
+
+      const cumDist = new Array(n).fill(0);
+      for (let i = 1; i < n; i++) {
+        cumDist[i] = cumDist[i - 1] + Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+      }
+      const totalLen = cumDist[n - 1];
+      if (totalLen < 0.5) {
+        ctx.beginPath();
+        ctx.arc(points[0].x, points[0].y, Math.max(1, baseSize * 0.45), 0, Math.PI * 2);
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.fill();
+        return;
+      }
+
+      const rawWidths = new Array(n);
+      const minW = Math.max(1.0, baseSize * 0.24);
+      const maxW = Math.max(minW + 0.5, baseSize * 1.65);
+
+      let smoothedSpeed = 6.0;
+      let smoothedW = baseSize * 0.85;
+
+      for (let i = 0; i < n; i++) {
+        if (i > 0) {
+          const dist = cumDist[i] - cumDist[i - 1];
+          let speed = dist;
+          if (points[i].t !== undefined && points[i - 1].t !== undefined) {
+            const dt = Math.max(1, points[i].t - points[i - 1].t);
+            speed = (dist / dt) * 16.67;
+          }
+          smoothedSpeed = smoothedSpeed * 0.68 + speed * 0.32;
+        }
+
+        // 若有 Apple Pencil 感壓值（pt.p），融合筆壓與運筆速度
+        const velocityFactor = 1 / (1 + Math.pow(smoothedSpeed / 7.5, 1.35));
+        const combinedFactor = (points[i].p !== null && points[i].p !== undefined)
+          ? (velocityFactor * 0.45 + Math.min(1, Math.max(0, points[i].p * 1.15)) * 0.55)
+          : velocityFactor;
+
+        const targetW = minW + (maxW - minW) * combinedFactor;
+        smoothedW = i === 0 ? targetW : (smoothedW * 0.52 + targetW * 0.48);
+
+        const dStart = cumDist[i];
+        const dEnd = totalLen - dStart;
+        const startTaperLen = Math.min(baseSize * 2.2, totalLen * 0.22);
+        const endTaperLen = Math.min(baseSize * 3.6, totalLen * 0.32);
+
+        let taper = 1.0;
+        if (startTaperLen > 0 && dStart < startTaperLen) {
+          const u = dStart / startTaperLen;
+          taper *= 0.42 + 0.58 * (1 - Math.pow(1 - u, 2));
+        }
+        if (endTaperLen > 0 && dEnd < endTaperLen) {
+          const u = dEnd / endTaperLen;
+          taper *= 0.22 + 0.78 * Math.pow(u, 1.45);
+        }
+
+        rawWidths[i] = Math.max(0.8, smoothedW * taper);
+      }
+
+      function strokeLinearVar(p0, p1, w0, w1) {
+        const segLen = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+        const steps = Math.max(1, Math.ceil(segLen / 1.8));
+        let prevX = p0.x, prevY = p0.y;
+        for (let s = 1; s <= steps; s++) {
+          const t = s / steps;
+          const x = p0.x + (p1.x - p0.x) * t;
+          const y = p0.y + (p1.y - p0.y) * t;
+          ctx.lineWidth = w0 + (w1 - w0) * ((s - 0.5) / steps);
+          ctx.beginPath();
+          ctx.moveTo(prevX, prevY);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          prevX = x;
+          prevY = y;
+        }
+      }
+
+      function strokeQuadVar(p0, cp, p2, w0, w2) {
+        const approxLen = Math.hypot(cp.x - p0.x, cp.y - p0.y) + Math.hypot(p2.x - cp.x, p2.y - cp.y);
+        const steps = Math.max(1, Math.ceil(approxLen / 1.8));
+        let prevX = p0.x, prevY = p0.y;
+        for (let s = 1; s <= steps; s++) {
+          const t = s / steps;
+          const mt = 1 - t;
+          const x = mt * mt * p0.x + 2 * mt * t * cp.x + t * t * p2.x;
+          const y = mt * mt * p0.y + 2 * mt * t * cp.y + t * t * p2.y;
+          ctx.lineWidth = w0 + (w2 - w0) * ((s - 0.5) / steps);
+          ctx.beginPath();
+          ctx.moveTo(prevX, prevY);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          prevX = x;
+          prevY = y;
+        }
+      }
+
+      if (n === 2) {
+        strokeLinearVar(points[0], points[1], rawWidths[0], rawWidths[1]);
+        return;
+      }
+
+      let mid0 = { x: (points[0].x + points[1].x) * 0.5, y: (points[0].y + points[1].y) * 0.5 };
+      let midW0 = (rawWidths[0] + rawWidths[1]) * 0.5;
+      strokeLinearVar(points[0], mid0, rawWidths[0], midW0);
+
+      for (let i = 1; i < n - 1; i++) {
+        const mid1 = { x: (points[i].x + points[i + 1].x) * 0.5, y: (points[i].y + points[i + 1].y) * 0.5 };
+        const midW1 = (rawWidths[i] + rawWidths[i + 1]) * 0.5;
+        strokeQuadVar(mid0, points[i], mid1, midW0, midW1);
+        mid0 = mid1;
+        midW0 = midW1;
+      }
+
+      strokeLinearVar(mid0, points[n - 1], midW0, rawWidths[n - 1]);
+    }
+
+    function hexToRgb(hex) {
+      let c = hex.replace('#', '');
+      if (c.length === 3) c = c.split('').map(x => x + x).join('');
+      const num = parseInt(c, 16);
+      return isNaN(num) ? { r: 0, g: 0, b: 0 } : { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+    }
+
+    function drawSparklePath(p, pathOpacity) {
+      const time = Date.now() * 0.004;
+      const wave = (Math.sin(time * 2.5) + 1) / 2;
+      const currentAlpha = (0.2 + wave * 0.8) * pathOpacity;
+      const rgb = hexToRgb(p.color);
+      const lightFactor = 1 + wave * 0.4;
+      const r = Math.min(255, Math.round(rgb.r * lightFactor + wave * 50));
+      const g = Math.min(255, Math.round(rgb.g * lightFactor + wave * 50));
+      const b = Math.min(255, Math.round(rgb.b * lightFactor + wave * 50));
+
+      ctx.save();
+      ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${currentAlpha})`;
+      ctx.lineWidth = p.size;
+      drawSimplePath(p.points);
+      ctx.restore();
+    }
+
+    selectToolBtn.addEventListener('click', () => {
+      currentTool = 'select'; selectToolBtn.classList.add('active');
+      penMenuBtn.classList.remove('active'); eraserMenuBtn.classList.remove('active');
+      canvas.style.cursor = '';
+      canvas.className = 'select-cursor'; penDropdown.classList.remove('show-sub'); eraserDropdown.classList.remove('show-sub');
+      advancedPanel.classList.remove('show'); redraw();
+    });
+
+    function updateGroupBounds() {
+      if (selectedPaths.length === 0 && selectedImages.length === 0) {
+        groupBounds = null; topRightMenuWrapper.style.display = 'none'; return;
+      }
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      selectedPaths.forEach(p => p.points.forEach(pt => {
+        if (pt.x < minX) minX = pt.x; if (pt.y < minY) minY = pt.y;
+        if (pt.x > maxX) maxX = pt.x; if (pt.y > maxY) maxY = pt.y;
+      }));
+      selectedImages.forEach(img => {
+        if (img.x < minX) minX = img.x; if (img.y < minY) minY = img.y;
+        if (img.x + img.w > maxX) maxX = img.x + img.w; if (img.y + img.h > maxY) maxY = img.y + img.h;
+      });
+      groupBounds = { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+    }
+
+    iconDropdownBtn.addEventListener('click', (e) => { e.stopPropagation(); objectMenu.classList.toggle('show'); });
+    menuOpacity.addEventListener('click', (e) => {
+      e.stopPropagation(); opacitySubPanel.classList.toggle('show');
+      let curOp = 1.0;
+      if (selectedImages.length > 0) curOp = selectedImages[0].opacity !== undefined ? selectedImages[0].opacity : 1.0;
+      else if (selectedPaths.length > 0) curOp = selectedPaths[0].opacity !== undefined ? selectedPaths[0].opacity : 1.0;
+      opacityRange.value = Math.round(curOp * 100);
+      opacityValText.textContent = opacityRange.value + '%';
+    });
+
+    opacityRange.addEventListener('input', (e) => {
+      e.stopPropagation();
+      const val = parseInt(e.target.value) / 100;
+      opacityValText.textContent = e.target.value + '%';
+      selectedImages.forEach(img => img.opacity = val);
+      selectedPaths.forEach(p => p.opacity = val);
+      pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+      scheduleRedraw(); saveProgress();
+    });
+
+    document.getElementById('menuSelect').addEventListener('click', () => { objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); });
+    document.getElementById('menuDelete').addEventListener('click', () => { deleteSelected(); objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); });
+    document.getElementById('menuCopy').addEventListener('click', () => { copySelected(); objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); });
+    document.getElementById('menuCut').addEventListener('click', () => { copySelected(); deleteSelected(); objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); });
+    
+    document.getElementById('menuPaste').addEventListener('click', (e) => {
+      e.stopPropagation(); pasteClipboardAt(menuOpenPos.x, menuOpenPos.y); canvasMenu.style.display = 'none';
+    });
+
+    function deleteSelected() {
+      paths = paths.filter(p => !selectedPaths.includes(p));
+      images = images.filter(img => !selectedImages.includes(img));
+      pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+      selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null;
+      redraw(); saveProgress();
+    }
+
+    function copySelected() {
+      clipboard.paths = JSON.parse(JSON.stringify(selectedPaths));
+      clipboard.images = JSON.parse(JSON.stringify(selectedImages));
+    }
+
+    function pasteClipboardAt(posX, posY) {
+      if (clipboard.paths.length === 0 && clipboard.images.length === 0) return;
+      selectedPaths = []; selectedImages = [];
+      let minX = Infinity, minY = Infinity;
+      clipboard.paths.forEach(p => p.points.forEach(pt => { if(pt.x < minX) minX = pt.x; if(pt.y < minY) minY = pt.y; }));
+      clipboard.images.forEach(img => { if(img.x < minX) minX = img.x; if(img.y < minY) minY = img.y; });
+      const offsetX = (posX !== undefined && minX !== Infinity) ? posX - minX : 50;
+      const offsetY = (posY !== undefined && minY !== Infinity) ? posY - minY : 50;
+      clipboard.paths.forEach(p => {
+        const newP = JSON.parse(JSON.stringify(p));
+        newP.points.forEach(pt => { pt.x += offsetX; pt.y += offsetY; });
+        paths.push(newP); selectedPaths.push(newP);
+      });
+      let loadedCount = 0;
+      clipboard.images.forEach(item => {
+        const img = new Image();
+        img.onload = () => {
+          const newImgObj = { img: img, x: item.x + offsetX, y: item.y + offsetY, w: item.w, h: item.h, src: item.src, opacity: item.opacity, rotation: item.rotation };
+          images.push(newImgObj); selectedImages.push(newImgObj); loadedCount++;
+          if (loadedCount === clipboard.images.length) {
+            pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+            updateGroupBounds(); prepareTransformBackup(); redraw(); saveProgress();
+          }
+        };
+        img.src = item.src;
+      });
+      if (clipboard.images.length === 0) {
+        pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+        updateGroupBounds(); prepareTransformBackup(); redraw(); saveProgress();
+      }
+    }
+
+    function prepareTransformBackup() {
+      origGroupBounds = groupBounds ? { x: groupBounds.x, y: groupBounds.y, w: groupBounds.w, h: groupBounds.h } : null;
+      selectedImages.forEach(img => { img.origX = img.x; img.origY = img.y; img.origW = img.w; img.origH = img.h; });
+      selectedPaths.forEach(p => {
+        p.origSize = p.size;
+        p.origPoints = p.points.map(pt => ({ x: pt.x, y: pt.y, t: pt.t, p: pt.p }));
+      });
+    }
+
+    function launchSnippingWithImage(dataUrl) {
+      capturedScreenImg = new Image();
+      capturedScreenImg.onload = () => {
+        const dpr = window.devicePixelRatio || 1;
+        snippingLayer.width = window.innerWidth * dpr;
+        snippingLayer.height = window.innerHeight * dpr;
+        snipCtx.resetTransform();
+        snipCtx.scale(dpr, dpr);
+        snippingLayer.style.display = 'block';
+        renderSnippingOverlay(0, 0, 0, 0);
+      };
+      capturedScreenImg.src = dataUrl;
+    }
+
+    screenshotBtn.addEventListener('click', async () => {
+      if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: false });
+          const video = document.createElement('video'); video.srcObject = stream;
+          video.onloadedmetadata = () => {
+            video.play();
+            setTimeout(() => {
+              const tempCanvas = document.createElement('canvas');
+              tempCanvas.width = video.videoWidth; tempCanvas.height = video.videoHeight;
+              tempCanvas.getContext('2d').drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+              stream.getTracks().forEach(track => track.stop());
+              launchSnippingWithImage(tempCanvas.toDataURL('image/png'));
+            }, 200);
+          };
+          return;
+        } catch (err) {
+          console.log("外部螢幕擷取未啟用，改用白板局部擷取", err);
+        }
+      }
+      // iPad Safari 支援白板畫面直接局部圈選複製
+      launchSnippingWithImage(canvas.toDataURL('image/png'));
+    });
+
+    function renderSnippingOverlay(x1, y1, x2, y2) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      snipCtx.clearRect(0, 0, vw, vh);
+      snipCtx.drawImage(capturedScreenImg, 0, 0, vw, vh);
+      snipCtx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      snipCtx.fillRect(0, 0, vw, vh);
+      if (x1 !== x2 || y1 !== y2) {
+        const rx = Math.min(x1, x2), ry = Math.min(y1, y2), rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
+        snipCtx.save(); snipCtx.beginPath(); snipCtx.rect(rx, ry, rw, rh); snipCtx.clip();
+        snipCtx.drawImage(capturedScreenImg, 0, 0, vw, vh);
+        snipCtx.restore();
+        snipCtx.strokeStyle = '#007bff'; snipCtx.lineWidth = 2; snipCtx.strokeRect(rx, ry, rw, rh);
+      }
+    }
+
+    snippingLayer.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      snippingLayer.setPointerCapture(e.pointerId);
+      isSnipping = true;
+      snipStartX = e.clientX;
+      snipStartY = e.clientY;
+      snipEndX = snipStartX;
+      snipEndY = snipStartY;
+    });
+
+    snippingLayer.addEventListener('pointermove', (e) => {
+      if (!isSnipping) return;
+      e.preventDefault();
+      snipEndX = e.clientX;
+      snipEndY = e.clientY;
+      renderSnippingOverlay(snipStartX, snipStartY, snipEndX, snipEndY);
+    });
+
+    function endSnip(e) {
+      if (!isSnipping) return;
+      isSnipping = false;
+      snippingLayer.style.display = 'none';
+      const rx = Math.min(snipStartX, snipEndX), ry = Math.min(snipStartY, snipEndY);
+      const rw = Math.abs(snipEndX - snipStartX), rh = Math.abs(snipEndY - snipStartY);
+      if (rw > 10 && rh > 10) {
+        const dpr = window.devicePixelRatio || 1;
+        const cropCanvas = document.createElement('canvas');
+        cropCanvas.width = Math.round(rw * dpr);
+        cropCanvas.height = Math.round(rh * dpr);
+        const scaleX = capturedScreenImg.width / window.innerWidth;
+        const scaleY = capturedScreenImg.height / window.innerHeight;
+        cropCanvas.getContext('2d').drawImage(
+          capturedScreenImg,
+          rx * scaleX, ry * scaleY, rw * scaleX, rh * scaleY,
+          0, 0, cropCanvas.width, cropCanvas.height
+        );
+        const dataUrl = cropCanvas.toDataURL('image/png');
+        const newImg = new Image();
+        newImg.onload = () => {
+          images.push({ img: newImg, x: rx + 16, y: ry + 16, w: rw, h: rh, src: dataUrl, opacity: 1.0, rotation: 0 });
+          pages[currentPageIndex].images = images; redraw(); saveProgress();
+        };
+        newImg.src = dataUrl;
+      }
+    }
+
+    snippingLayer.addEventListener('pointerup', endSnip);
+    snippingLayer.addEventListener('pointercancel', endSnip);
+
+    function positionPopupNearButton(btn, popupEl) {
+      const rect = btn.getBoundingClientRect();
+      popupEl.style.top = Math.min(window.innerHeight - 280, Math.max(12, rect.top)) + 'px';
+    }
+
+    penMenuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      positionPopupNearButton(penMenuBtn, penSubMenu);
+      penDropdown.classList.toggle('show-sub');
+      eraserDropdown.classList.remove('show-sub');
+      advancedPanel.classList.remove('show');
+    });
+
+    eraserMenuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      positionPopupNearButton(eraserMenuBtn, eraserSubMenu);
+      eraserDropdown.classList.toggle('show-sub');
+      penDropdown.classList.remove('show-sub');
+      advancedPanel.classList.remove('show');
+    });
+
+    colorBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      positionPopupNearButton(colorBtn, advancedPanel);
+      advancedPanel.classList.toggle('show');
+      penDropdown.classList.remove('show-sub');
+      eraserDropdown.classList.remove('show-sub');
+    });
+
+    panelCloseBtn.addEventListener('click', () => advancedPanel.classList.remove('show'));
+
+    panelTabs.forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        e.stopPropagation();
+        panelTabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.getAttribute('data-tab')).classList.add('active');
+      });
+    });
+    
+    window.addEventListener('pointerdown', (e) => {
+      if (!penDropdown.contains(e.target)) penDropdown.classList.remove('show-sub');
+      if (!eraserDropdown.contains(e.target)) eraserDropdown.classList.remove('show-sub');
+      if (!advancedPanel.contains(e.target) && !colorBtn.contains(e.target)) advancedPanel.classList.remove('show');
+      if (!topRightMenuWrapper.contains(e.target)) { objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); }
+      if (!canvasMenu.contains(e.target)) canvasMenu.style.display = 'none';
+    });
+
+    function setPenType(type) {
+      currentTool = 'pen'; selectToolBtn.classList.remove('active');
+      penType = type; penMenuBtn.classList.add('active'); eraserMenuBtn.classList.remove('active');
+      document.querySelectorAll('#penDropdown .sub-menu button').forEach(b => b.classList.remove('active'));
+      const activeId = 'type' + (
+        type === 'normal' ? 'Normal' :
+        type === 'soft' ? 'Soft' :
+        type === 'highlighter' ? 'Highlighter' : 'Sparkle'
+      );
+      document.getElementById(activeId).classList.add('active');
+      canvas.style.cursor = '';
+      canvas.className = 'brush-cursor'; sizeRange.value = penSize; updateSizeUI(penSize);
+      selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null; redraw();
+    }
+    document.getElementById('typeNormal').addEventListener('click', (e) => { e.stopPropagation(); setPenType('normal'); penDropdown.classList.remove('show-sub'); });
+    document.getElementById('typeSoft').addEventListener('click', (e) => { e.stopPropagation(); setPenType('soft'); penDropdown.classList.remove('show-sub'); });
+    document.getElementById('typeHighlighter').addEventListener('click', (e) => { e.stopPropagation(); setPenType('highlighter'); penDropdown.classList.remove('show-sub'); });
+    document.getElementById('typeSparkle').addEventListener('click', (e) => { e.stopPropagation(); setPenType('sparkle'); penDropdown.classList.remove('show-sub'); });
+
+    function setEraserType(type) {
+      currentTool = 'eraser'; selectToolBtn.classList.remove('active');
+      eraserType = type; eraserMenuBtn.classList.add('active'); penMenuBtn.classList.remove('active');
+      document.querySelectorAll('#eraserDropdown .sub-menu button').forEach(b => b.classList.remove('active'));
+      document.getElementById('erase' + (type === 'normal' ? 'Normal' : type === 'object' ? 'Object' : 'Lasso')).classList.add('active');
+      canvas.style.cursor = '';
+      canvas.className = 'eraser-cursor'; sizeRange.value = eraserSize; updateSizeUI(eraserSize);
+      selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null; redraw();
+    }
+    document.getElementById('eraseNormal').addEventListener('click', (e) => { e.stopPropagation(); setEraserType('normal'); eraserDropdown.classList.remove('show-sub'); });
+    document.getElementById('eraseObject').addEventListener('click', (e) => { e.stopPropagation(); setEraserType('object'); eraserDropdown.classList.remove('show-sub'); });
+    document.getElementById('eraseLasso').addEventListener('click', (e) => { e.stopPropagation(); setEraserType('lasso'); eraserDropdown.classList.remove('show-sub'); });
+
+    document.querySelectorAll('.color-box').forEach(box => {
+      box.addEventListener('click', (e) => {
+        e.stopPropagation(); currentColor = box.getAttribute('data-color'); advancedPanel.classList.remove('show');
+        if (currentTool === 'eraser') setPenType(penType);
+      });
+    });
+
+    function updateSizeUI(val) {
+      sizePreviewDot.style.width = Math.min(45, Math.max(4, val)) + 'px';
+      sizePreviewDot.style.height = Math.min(45, Math.max(4, val)) + 'px';
+      if (currentTool === 'eraser') { eraserSize = parseInt(val); sizeLabelTitle.textContent = "橡皮擦大小調整"; }
+      else { penSize = parseInt(val); sizeLabelTitle.textContent = "筆大小調整"; }
+    }
+
+    sizeRange.addEventListener('input', (e) => { e.stopPropagation(); updateSizeUI(sizeRange.value); });
+    sizePresetBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation(); const val = btn.getAttribute('data-size');
+        sizeRange.value = val; updateSizeUI(val);
+      });
+    });
+
+    function getPointerPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        p: (e.pointerType === 'pen' && typeof e.pressure === 'number' && e.pressure > 0) ? e.pressure : null
+      };
+    }
+
+    function hitTestObject(pos) {
+      const hitRadius = 18;
+      for (let i = paths.length - 1; i >= 0; i--) {
+        const p = paths[i];
+        if (p.points.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) <= Math.max(hitRadius, p.size))) return { type: 'path', obj: p };
+      }
+      for (let i = images.length - 1; i >= 0; i--) {
+        const img = images[i];
+        if (pos.x >= img.x && pos.x <= img.x + img.w && pos.y >= img.y && pos.y <= img.y + img.h) return { type: 'image', obj: img };
+      }
+      return null;
+    }
+
+    function hitTestHandle(pos) {
+      if (!groupBounds) return null;
+      // 放大觸控感應半徑，方便在 iPad 上用手指或 Apple Pencil 精準拖曳
+      const rotX = groupBounds.x + groupBounds.w / 2, rotY = groupBounds.y - 26;
+      if (Math.hypot(pos.x - rotX, pos.y - rotY) < 18) return 'rotating';
+
+      const swX = groupBounds.x, swY = groupBounds.y + groupBounds.h;
+      if (Math.hypot(pos.x - swX, pos.y - swY) < 20) return 'resizing-sw';
+
+      const nX = groupBounds.x + groupBounds.w / 2, nY = groupBounds.y;
+      if (Math.hypot(pos.x - nX, pos.y - nY) < 18) return 'resizing-n';
+
+      const sX = groupBounds.x + groupBounds.w / 2, sY = groupBounds.y + groupBounds.h;
+      if (Math.hypot(pos.x - sX, pos.y - sY) < 18) return 'resizing-s';
+
+      const wX = groupBounds.x, wY = groupBounds.y + groupBounds.h / 2;
+      if (Math.hypot(pos.x - wX, pos.y - wY) < 18) return 'resizing-w';
+
+      const eX = groupBounds.x + groupBounds.w, eY = groupBounds.y + groupBounds.h / 2;
+      if (Math.hypot(pos.x - eX, pos.y - eY) < 18) return 'resizing-e';
+
+      return null;
+    }
+
+    function updateSelectCursor(pos) {
+      if (currentTool !== 'select' || interactionState) return;
+      if (groupBounds) {
+        const handle = hitTestHandle(pos);
+        if (handle === 'rotating') { canvas.style.cursor = 'grab'; return; }
+        if (handle === 'resizing-sw') { canvas.style.cursor = 'nesw-resize'; return; }
+        if (handle === 'resizing-n' || handle === 'resizing-s') { canvas.style.cursor = 'ns-resize'; return; }
+        if (handle === 'resizing-w' || handle === 'resizing-e') { canvas.style.cursor = 'ew-resize'; return; }
+        if (pos.x >= groupBounds.x && pos.x <= groupBounds.x + groupBounds.w && pos.y >= groupBounds.y && pos.y <= groupBounds.y + groupBounds.h) {
+          canvas.style.cursor = 'move';
+          return;
+        }
+      }
+      canvas.style.cursor = 'default';
+    }
+
+    function startAction(e) {
+      const pos = getPointerPos(e);
+      if (currentTool === 'select') {
+        if (groupBounds) {
+          const handle = hitTestHandle(pos);
+          if (handle) {
+            interactionState = handle;
+            dragStartX = pos.x; dragStartY = pos.y;
+            prepareTransformBackup();
+            if (handle === 'rotating') canvas.style.cursor = 'grabbing';
+            else if (handle === 'resizing-sw') canvas.style.cursor = 'nesw-resize';
+            else if (handle === 'resizing-n' || handle === 'resizing-s') canvas.style.cursor = 'ns-resize';
+            else if (handle === 'resizing-w' || handle === 'resizing-e') canvas.style.cursor = 'ew-resize';
+            objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show');
+            return;
+          }
+          if (pos.x >= groupBounds.x && pos.x <= groupBounds.x + groupBounds.w && pos.y >= groupBounds.y && pos.y <= groupBounds.y + groupBounds.h) {
+            interactionState = 'dragging';
+            dragStartX = pos.x; dragStartY = pos.y;
+            prepareTransformBackup();
+            canvas.style.cursor = 'move';
+            objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show');
+            return;
+          }
+        }
+        const hit = hitTestObject(pos);
+        if (hit) {
+          selectedPaths = hit.type === 'path' ? [hit.obj] : [];
+          selectedImages = hit.type === 'image' ? [hit.obj] : [];
+          updateGroupBounds(); prepareTransformBackup(); interactionState = 'dragging';
+          dragStartX = pos.x; dragStartY = pos.y;
+          canvas.style.cursor = 'move';
+          objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); redraw(); return;
+        }
+        isSelecting = true; selectStartX = pos.x; selectStartY = pos.y;
+        selectionBox = { x: pos.x, y: pos.y, w: 0, h: 0 };
+        selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null;
+        objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); redraw();
+      } else {
+        isDrawing = true;
+        if (currentTool === 'pen') {
+          const stampedPos = { x: pos.x, y: pos.y, t: performance.now(), p: pos.p };
+          currentPath = { type: penType, color: currentColor, size: parseInt(sizeRange.value), points: [stampedPos], opacity: 1.0, rotation: 0 };
+          paths.push(currentPath); pages[currentPageIndex].paths = paths; scheduleRedraw();
+        } else if (currentTool === 'eraser' && eraserType === 'lasso') { lassoPoints = [pos]; scheduleRedraw(); }
+        else if (currentTool === 'eraser' && eraserType === 'object') { eraseObjectAt(pos); }
+        else if (currentTool === 'eraser' && eraserType === 'normal') { lastEraserPos = pos; eraseLocalSegmentAt(pos); }
+      }
+    }
+
+    let lastEraserPos = null;
+    function moveAction(e) {
+      const pos = getPointerPos(e);
+      if (currentTool === 'select') {
+        if (interactionState === 'dragging') {
+          const dx = pos.x - dragStartX, dy = pos.y - dragStartY;
+          dragStartX = pos.x; dragStartY = pos.y;
+          selectedPaths.forEach(p => p.points.forEach(pt => { pt.x += dx; pt.y += dy; }));
+          selectedImages.forEach(img => { img.x += dx; img.y += dy; });
+          updateGroupBounds(); pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+          scheduleRedraw();
+        } else if (interactionState === 'resizing-sw' && origGroupBounds) {
+          const origRight = origGroupBounds.x + origGroupBounds.w;
+          const origTop = origGroupBounds.y;
+          const origW = origGroupBounds.w;
+          const origH = origGroupBounds.h;
+          const newW = Math.max(20, origRight - pos.x);
+          const newH = Math.max(20, pos.y - origTop);
+
+          let avgScale = 1;
+          if (origW < 2 && origH < 2) avgScale = 1;
+          else if (origW < 2) avgScale = newH / origH;
+          else if (origH < 2) avgScale = newW / origW;
+          else avgScale = ((newW / origW) + (newH / origH)) / 2;
+
+          selectedImages.forEach(img => {
+            img.x = origRight + (img.origX - origRight) * avgScale;
+            img.y = origTop + (img.origY - origTop) * avgScale;
+            img.w = Math.max(10, img.origW * avgScale);
+            img.h = Math.max(10, img.origH * avgScale);
+          });
+          selectedPaths.forEach(p => {
+            if (p.origSize !== undefined) p.size = Math.max(1, p.origSize * avgScale);
+            p.points.forEach((pt, idx) => {
+              const origPt = p.origPoints[idx];
+              pt.x = origRight + (origPt.x - origRight) * avgScale;
+              pt.y = origTop + (origPt.y - origTop) * avgScale;
+            });
+          });
+          updateGroupBounds();
+          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+          scheduleRedraw();
+        } else if (interactionState === 'resizing-e' && origGroupBounds) {
+          const origLeft = origGroupBounds.x;
+          const origW = origGroupBounds.w;
+          const newW = Math.max(10, pos.x - origLeft);
+          const scaleX = origW < 2 ? 1 : newW / origW;
+
+          selectedImages.forEach(img => {
+            img.x = origLeft + (img.origX - origLeft) * scaleX;
+            img.w = Math.max(5, img.origW * scaleX);
+          });
+          selectedPaths.forEach(p => {
+            p.points.forEach((pt, idx) => {
+              const origPt = p.origPoints[idx];
+              pt.x = origLeft + (origPt.x - origLeft) * scaleX;
+              pt.y = origPt.y;
+            });
+          });
+          updateGroupBounds();
+          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+          scheduleRedraw();
+        } else if (interactionState === 'resizing-w' && origGroupBounds) {
+          const origRight = origGroupBounds.x + origGroupBounds.w;
+          const origW = origGroupBounds.w;
+          const newW = Math.max(10, origRight - pos.x);
+          const scaleX = origW < 2 ? 1 : newW / origW;
+
+          selectedImages.forEach(img => {
+            img.x = origRight + (img.origX - origRight) * scaleX;
+            img.w = Math.max(5, img.origW * scaleX);
+          });
+          selectedPaths.forEach(p => {
+            p.points.forEach((pt, idx) => {
+              const origPt = p.origPoints[idx];
+              pt.x = origRight + (origPt.x - origRight) * scaleX;
+              pt.y = origPt.y;
+            });
+          });
+          updateGroupBounds();
+          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+          scheduleRedraw();
+        } else if (interactionState === 'resizing-s' && origGroupBounds) {
+          const origTop = origGroupBounds.y;
+          const origH = origGroupBounds.h;
+          const newH = Math.max(10, pos.y - origTop);
+          const scaleY = origH < 2 ? 1 : newH / origH;
+
+          selectedImages.forEach(img => {
+            img.y = origTop + (img.origY - origTop) * scaleY;
+            img.h = Math.max(5, img.origH * scaleY);
+          });
+          selectedPaths.forEach(p => {
+            p.points.forEach((pt, idx) => {
+              const origPt = p.origPoints[idx];
+              pt.x = origPt.x;
+              pt.y = origTop + (origPt.y - origTop) * scaleY;
+            });
+          });
+          updateGroupBounds();
+          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+          scheduleRedraw();
+        } else if (interactionState === 'resizing-n' && origGroupBounds) {
+          const origBottom = origGroupBounds.y + origGroupBounds.h;
+          const origH = origGroupBounds.h;
+          const newH = Math.max(10, origBottom - pos.y);
+          const scaleY = origH < 2 ? 1 : newH / origH;
+
+          selectedImages.forEach(img => {
+            img.y = origBottom + (img.origY - origBottom) * scaleY;
+            img.h = Math.max(5, img.origH * scaleY);
+          });
+          selectedPaths.forEach(p => {
+            p.points.forEach((pt, idx) => {
+              const origPt = p.origPoints[idx];
+              pt.x = origPt.x;
+              pt.y = origBottom + (origPt.y - origBottom) * scaleY;
+            });
+          });
+          updateGroupBounds();
+          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+          scheduleRedraw();
+        } else if (interactionState === 'rotating') {
+          const cx = groupBounds.x + groupBounds.w / 2, cy = groupBounds.y + groupBounds.h / 2;
+          const angle = Math.atan2(pos.y - cy, pos.x - cx) - Math.atan2(-26, 0);
+          selectedImages.forEach(img => img.rotation = angle);
+          selectedPaths.forEach(p => p.rotation = angle);
+          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+          scheduleRedraw();
+        } else if (isSelecting) {
+          selectionBox.w = pos.x - selectStartX; selectionBox.h = pos.y - selectStartY;
+          let rx = selectionBox.w < 0 ? selectStartX + selectionBox.w : selectStartX;
+          let ry = selectionBox.h < 0 ? selectStartY + selectionBox.h : selectStartY;
+          selectionBox = { x: rx, y: ry, w: Math.abs(selectionBox.w), h: Math.abs(selectionBox.h) };
+          scheduleRedraw();
+        } else {
+          updateSelectCursor(pos);
+        }
+      } else if (isDrawing) {
+        if (currentTool === 'pen' && currentPath) {
+          const lastPt = currentPath.points[currentPath.points.length - 1];
+          if (!lastPt || Math.hypot(pos.x - lastPt.x, pos.y - lastPt.y) >= 1.2) {
+            currentPath.points.push({ x: pos.x, y: pos.y, t: performance.now(), p: pos.p });
+            pages[currentPageIndex].paths = paths;
+            scheduleRedraw();
+          }
+        } else if (currentTool === 'eraser' && eraserType === 'normal') {
+          if (lastEraserPos && Math.hypot(pos.x - lastEraserPos.x, pos.y - lastEraserPos.y) < 3) return;
+          eraseLocalSegmentAt(pos); lastEraserPos = pos;
+        } else if (currentTool === 'eraser' && eraserType === 'object') { eraseObjectAt(pos); }
+        else if (currentTool === 'eraser' && eraserType === 'lasso') { lassoPoints.push(pos); scheduleRedraw(); }
+      }
+    }
+
+    function endAction() {
+      lastEraserPos = null;
+      if (currentTool === 'select') {
+        if (interactionState) {
+          interactionState = null;
+          canvas.style.cursor = 'default';
+          prepareTransformBackup();
+          redraw();
+          saveProgress();
+        } else if (isSelecting) {
+          isSelecting = false;
+          selectedImages = images.filter(img => 
+            img.x < selectionBox.x + selectionBox.w && 
+            img.x + img.w > selectionBox.x && 
+            img.y < selectionBox.y + selectionBox.h && 
+            img.y + img.h > selectionBox.y
+          );
+          selectedPaths = paths.filter(p => 
+            p.points.some(pt => 
+              pt.x >= selectionBox.x && 
+              pt.x <= selectionBox.x + selectionBox.w && 
+              pt.y >= selectionBox.y && 
+              pt.y <= selectionBox.y + selectionBox.h
+            )
+          );
+          updateGroupBounds(); selectionBox = null; prepareTransformBackup(); redraw();
+        }
+      } else if (isDrawing) {
+        isDrawing = false;
+        if (currentTool === 'eraser' && eraserType === 'lasso' && lassoPoints.length > 2) {
+          paths = paths.filter(p => !p.points.some(pt => isPointInPolygon(pt, lassoPoints)));
+          pages[currentPageIndex].paths = paths; lassoPoints = []; redraw();
+        } else if (currentTool === 'eraser' && eraserType === 'lasso') { lassoPoints = []; redraw(); }
+        saveProgress();
+      }
+    }
+
+    // 統一使用 Pointer Events（同時支援 iPad 手指觸控、Apple Pencil 感壓與滑鼠）
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.button !== undefined && e.button !== 0 && e.button !== 2) return;
+      if (activePointerId !== null && e.pointerType === 'touch') return;
+      activePointerId = e.pointerId;
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+
+      const pos = getPointerPos(e);
+      startPos = pos;
+
+      if (currentTool === 'select' && !groupBounds) {
+        if (e.button === 2) {
+          menuOpenPos = pos; canvasMenu.style.display = 'flex';
+          canvasMenu.style.left = pos.x + 'px'; canvasMenu.style.top = pos.y + 'px';
+          return;
+        } else {
+          clearTimeout(blankLongPressTimer);
+          if (!hitTestObject(pos)) {
+            blankLongPressTimer = setTimeout(() => {
+              menuOpenPos = pos; canvasMenu.style.display = 'flex';
+              canvasMenu.style.left = pos.x + 'px'; canvasMenu.style.top = pos.y + 'px';
+            }, 500);
+          }
+        }
+      }
+      startAction(e);
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (activePointerId !== null && e.pointerId !== activePointerId) return;
+      const pos = getPointerPos(e);
+      if (Math.hypot(pos.x - startPos.x, pos.y - startPos.y) > 15) clearTimeout(blankLongPressTimer);
+      if (isDrawing || interactionState || isSelecting || currentTool === 'select') {
+        moveAction(e);
+      }
+    });
+
+    function finishPointer(e) {
+      if (activePointerId !== null && e.pointerId !== activePointerId) return;
+      clearTimeout(blankLongPressTimer);
+      try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+      activePointerId = null;
+      endAction();
+    }
+
+    canvas.addEventListener('pointerup', finishPointer);
+    canvas.addEventListener('pointercancel', finishPointer);
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    window.addEventListener('keydown', (e) => {
+      if (currentTool === 'select' && (selectedPaths.length > 0 || selectedImages.length > 0)) {
+        if (e.key === 'Delete' || e.key === 'Backspace') { deleteSelected(); saveProgress(); }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'c') copySelected();
+        if ((e.ctrlKey || e.metaKey) && e.key === 'x') { copySelected(); deleteSelected(); saveProgress(); }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') { pasteClipboardAt(); saveProgress(); }
+    });
+
+    function eraseLocalSegmentAt(pos) {
+      const radius = Math.max(12, parseInt(sizeRange.value) * 1.2);
+      let newPaths = [], changed = false;
+      paths.forEach(p => {
+        if (!p.points || p.points.length === 0) return;
+        let currentSegment = [];
+        p.points.forEach(pt => {
+          if (Math.hypot(pt.x - pos.x, pt.y - pos.y) > radius) {
+            currentSegment.push(pt);
+          } else {
+            changed = true;
+            if (currentSegment.length > 0) newPaths.push({ type: p.type, color: p.color, size: p.size, opacity: p.opacity, rotation: p.rotation, points: currentSegment });
+            currentSegment = [];
+          }
+        });
+        if (currentSegment.length > 0) newPaths.push({ type: p.type, color: p.color, size: p.size, opacity: p.opacity, rotation: p.rotation, points: currentSegment });
+      });
+      if (changed) { paths = newPaths; pages[currentPageIndex].paths = paths; scheduleRedraw(); }
+    }
+
+    function eraseObjectAt(pos) {
+      const radius = Math.max(20, parseInt(sizeRange.value) * 1.5);
+      let changed = false;
+      const pCount = paths.length;
+      paths = paths.filter(p => !p.points.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) <= radius));
+      if (paths.length !== pCount) changed = true;
+      const imgCount = images.length;
+      images = images.filter(img => !(pos.x >= img.x && pos.x <= img.x + img.w && pos.y >= img.y && pos.y <= img.y + img.h));
+      if (images.length !== imgCount) changed = true;
+      if (changed) { pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images; scheduleRedraw(); }
+    }
+
+    function isPointInPolygon(point, polygon) {
+      let x = point.x, y = point.y, inside = false;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        let xi = polygon[i].x, yi = polygon[i].y, xj = polygon[j].x, yj = polygon[j].y;
+        if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+      }
+      return inside;
+    }
+
+    clearBtn.addEventListener('click', () => {
+      pages[currentPageIndex].paths = []; pages[currentPageIndex].images = [];
+      paths = pages[currentPageIndex].paths; images = pages[currentPageIndex].images;
+      selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null;
+      topRightMenuWrapper.style.display = 'none'; objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); canvasMenu.style.display = 'none';
+      redraw(); saveProgress();
+    });
+
+    function saveDrawingFile() {
+      if (paths.length === 0 && images.length === 0) return;
+      let fileName = prompt(`請輸入「第 ${currentPageIndex + 1} 頁」的檔案名稱：`, `數位白板_第${currentPageIndex + 1}頁`);
+      if (fileName !== null) {
+        fileName = fileName.trim() === "" ? `drawing_page_${currentPageIndex + 1}` : fileName.trim();
+        const link = document.createElement('a');
+        link.download = fileName + '.png';
+        link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }
+
+    saveBtn.addEventListener('click', () => saveDrawingFile());
+    window.addEventListener('beforeunload', () => saveProgress());
+  </script>
+</body>
+</html>
