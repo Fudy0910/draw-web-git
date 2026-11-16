@@ -2113,17 +2113,30 @@
     screenshotBtn.addEventListener('click', async () => {
       if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
         try {
-          const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: false });
-          const video = document.createElement('video'); video.srcObject = stream;
-          video.onloadedmetadata = () => {
-            video.play();
+          const displayOptions = { video: { cursor: "always" }, audio: false };
+          if (typeof CaptureController !== 'undefined') {
+            try {
+              const controller = new CaptureController();
+              if (typeof controller.setFocusBehavior === 'function') {
+                controller.setFocusBehavior('no-focus-change');
+              }
+              displayOptions.controller = controller;
+            } catch (ctrlErr) {}
+          }
+          const stream = await navigator.mediaDevices.getDisplayMedia(displayOptions);
+          const video = document.createElement('video');
+          video.muted = true;
+          video.playsInline = true;
+          video.srcObject = stream;
+          video.onloadedmetadata = async () => {
+            try { await video.play(); } catch (e) {}
             setTimeout(() => {
               const tempCanvas = document.createElement('canvas');
               tempCanvas.width = video.videoWidth; tempCanvas.height = video.videoHeight;
               tempCanvas.getContext('2d').drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
               stream.getTracks().forEach(track => track.stop());
               launchSnippingWithImage(tempCanvas.toDataURL('image/png'));
-            }, 200);
+            }, 250);
           };
           return;
         } catch (err) {
