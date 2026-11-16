@@ -1277,24 +1277,7 @@
     }
 
     function restoreOriginalZoomScale() {
-      const cw = canvas.parentElement.clientWidth || window.innerWidth;
-      const ch = canvas.parentElement.clientHeight || window.innerHeight;
-      if (Math.abs(viewScale - 1.0) < 0.001) {
-        viewScale = 1.0;
-        viewOffsetX = 0;
-        viewOffsetY = 0;
-      } else {
-        const centerWorld = screenToWorld(cw / 2, ch / 2);
-        viewScale = 1.0;
-        viewOffsetX = cw / 2 - centerWorld.x;
-        viewOffsetY = ch / 2 - centerWorld.y;
-        if (Math.abs(viewOffsetX) < 1 && Math.abs(viewOffsetY) < 1) {
-          viewOffsetX = 0;
-          viewOffsetY = 0;
-        }
-      }
-      syncPageViewState();
-      if (currentTool === 'eraser') updateEraserCursor();
+      resetViewTransform();
       redraw();
       saveProgress();
     }
