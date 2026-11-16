@@ -382,7 +382,7 @@
       z-index: 99999;
       display: none;
       touch-action: none;
-      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 1v22M1 12h22" stroke="%23ffffff" stroke-width="4" stroke-linecap="square"/><path d="M12 1v22M1 12h22" stroke="%23000000" stroke-width="2" stroke-linecap="square"/></svg>') 12 12, crosshair;
+      cursor: none;
     }
     .page-indicator { background: #444; color: #ffc107; padding: 6px 2px; border-radius: 6px; font-size: 11px; font-weight: bold; text-align: center; width: 56px; flex-shrink: 0; }
   </style>
@@ -576,6 +576,11 @@
         <button id="zoomOutBtn">
           <svg class="icon" viewBox="0 0 24 24">
             <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+        <button id="zoomResetBtn">
+          <svg class="icon" viewBox="0 0 24 24">
+            <text x="12" y="16" text-anchor="middle" fill="currentColor" stroke="none" font-size="11" font-weight="bold" font-family="sans-serif">1:1</text>
           </svg>
         </button>
       </div>
@@ -934,6 +939,7 @@
 
     let isSnipping = false;
     let snipStartX = 0, snipStartY = 0, snipEndX = 0, snipEndY = 0;
+    let snipCursorX = 0, snipCursorY = 0;
     let capturedScreenImg = null;
     const snipTouchPointers = new Map();
     let isTwoFingerTapCandidate = false;
@@ -1268,6 +1274,29 @@
       viewOffsetY = 0;
       syncPageViewState();
       if (currentTool === 'eraser') updateEraserCursor();
+    }
+
+    function restoreOriginalZoomScale() {
+      const cw = canvas.parentElement.clientWidth || window.innerWidth;
+      const ch = canvas.parentElement.clientHeight || window.innerHeight;
+      if (Math.abs(viewScale - 1.0) < 0.001) {
+        viewScale = 1.0;
+        viewOffsetX = 0;
+        viewOffsetY = 0;
+      } else {
+        const centerWorld = screenToWorld(cw / 2, ch / 2);
+        viewScale = 1.0;
+        viewOffsetX = cw / 2 - centerWorld.x;
+        viewOffsetY = ch / 2 - centerWorld.y;
+        if (Math.abs(viewOffsetX) < 1 && Math.abs(viewOffsetY) < 1) {
+          viewOffsetX = 0;
+          viewOffsetY = 0;
+        }
+      }
+      syncPageViewState();
+      if (currentTool === 'eraser') updateEraserCursor();
+      redraw();
+      saveProgress();
     }
 
     function switchPage(index) {
@@ -1916,6 +1945,13 @@
       zoomDropdown.classList.remove('show-sub');
     });
 
+    document.getElementById('zoomResetBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      setZoomMode(zoomMode);
+      restoreOriginalZoomScale();
+      zoomDropdown.classList.remove('show-sub');
+    });
+
     function updateGroupBounds() {
       if (selectedPaths.length === 0 && selectedImages.length === 0) {
         groupBounds = null; topRightMenuWrapper.style.display = 'none'; return;
@@ -2043,15 +2079,46 @@
       });
     }
 
+    function captureFullViewportWhiteboard() {
+      const dpr = window.devicePixelRatio || 1;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const snapCanvas = document.createElement('canvas');
+      snapCanvas.width = Math.round(vw * dpr);
+      snapCanvas.height = Math.round(vh * dpr);
+      const sctx = snapCanvas.getContext('2d');
+      sctx.fillStyle = '#ffffff';
+      sctx.fillRect(0, 0, snapCanvas.width, snapCanvas.height);
+
+      const cRect = canvas.getBoundingClientRect();
+      sctx.drawImage(
+        canvas,
+        0, 0, canvas.width, canvas.height,
+        cRect.left * dpr, cRect.top * dpr, cRect.width * dpr, cRect.height * dpr
+      );
+
+      const toolbarEl = document.getElementById('mainToolbar');
+      if (toolbarEl) {
+        const tRect = toolbarEl.getBoundingClientRect();
+        sctx.fillStyle = '#333333';
+        sctx.fillRect(tRect.left * dpr, tRect.top * dpr, tRect.width * dpr, tRect.height * dpr);
+      }
+
+      return snapCanvas.toDataURL('image/png');
+    }
+
     function launchSnippingWithImage(dataUrl) {
       capturedScreenImg = new Image();
       capturedScreenImg.onload = () => {
         snipTouchPointers.clear();
         isTwoFingerTapCandidate = false;
         isSnipping = false;
+        snipStartX = 0; snipStartY = 0; snipEndX = 0; snipEndY = 0;
+        snipCursorX = window.innerWidth / 2;
+        snipCursorY = window.innerHeight / 2;
         const dpr = window.devicePixelRatio || 1;
-        snippingLayer.width = window.innerWidth * dpr;
-        snippingLayer.height = window.innerHeight * dpr;
+        snippingLayer.width = Math.round(window.innerWidth * dpr);
+        snippingLayer.height = Math.round(window.innerHeight * dpr);
         snipCtx.resetTransform();
         snipCtx.scale(dpr, dpr);
         snippingLayer.style.display = 'block';
@@ -2080,8 +2147,33 @@
           console.log("外部螢幕擷取未啟用，改用白板局部擷取", err);
         }
       }
-      launchSnippingWithImage(canvas.toDataURL('image/png'));
+      launchSnippingWithImage(captureFullViewportWhiteboard());
     });
+
+    function drawSnipCrosshair(cx, cy) {
+      const arm = 22;
+      const px = Math.round(cx) + 0.5;
+      const py = Math.round(cy) + 0.5;
+      snipCtx.save();
+      snipCtx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
+      snipCtx.lineWidth = 3;
+      snipCtx.beginPath();
+      snipCtx.moveTo(px - arm, py);
+      snipCtx.lineTo(px + arm, py);
+      snipCtx.moveTo(px, py - arm);
+      snipCtx.lineTo(px, py + arm);
+      snipCtx.stroke();
+
+      snipCtx.strokeStyle = '#222222';
+      snipCtx.lineWidth = 1;
+      snipCtx.beginPath();
+      snipCtx.moveTo(px - arm, py);
+      snipCtx.lineTo(px + arm, py);
+      snipCtx.moveTo(px, py - arm);
+      snipCtx.lineTo(px, py + arm);
+      snipCtx.stroke();
+      snipCtx.restore();
+    }
 
     function renderSnippingOverlay(x1, y1, x2, y2) {
       const vw = window.innerWidth;
@@ -2095,8 +2187,9 @@
         snipCtx.save(); snipCtx.beginPath(); snipCtx.rect(rx, ry, rw, rh); snipCtx.clip();
         snipCtx.drawImage(capturedScreenImg, 0, 0, vw, vh);
         snipCtx.restore();
-        snipCtx.strokeStyle = '#007bff'; snipCtx.lineWidth = 2; snipCtx.strokeRect(rx, ry, rw, rh);
+        snipCtx.strokeStyle = '#007bff'; snipCtx.lineWidth = 1.5; snipCtx.strokeRect(rx, ry, rw, rh);
       }
+      drawSnipCrosshair(snipCursorX, snipCursorY);
     }
 
     function captureFullSnip() {
@@ -2135,6 +2228,14 @@
       newImg.src = dataUrl;
     }
 
+    function getSnipPoint(e) {
+      const sRect = snippingLayer.getBoundingClientRect();
+      return {
+        x: e.clientX - sRect.left,
+        y: e.clientY - sRect.top
+      };
+    }
+
     snippingLayer.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -2154,8 +2255,12 @@
         return;
       }
 
+      const pt = getSnipPoint(e);
+      snipCursorX = pt.x;
+      snipCursorY = pt.y;
+
       if (e.pointerType === 'touch') {
-        snipTouchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        snipTouchPointers.set(e.pointerId, { x: pt.x, y: pt.y });
         if (snipTouchPointers.size === 2) {
           isSnipping = false;
           isTwoFingerTapCandidate = true;
@@ -2170,23 +2275,33 @@
 
       try { snippingLayer.setPointerCapture(e.pointerId); } catch (err) {}
       isSnipping = true;
-      snipStartX = e.clientX;
-      snipStartY = e.clientY;
+      snipStartX = pt.x;
+      snipStartY = pt.y;
       snipEndX = snipStartX;
       snipEndY = snipStartY;
+      renderSnippingOverlay(snipStartX, snipStartY, snipEndX, snipEndY);
     });
 
     snippingLayer.addEventListener('pointermove', (e) => {
+      const pt = getSnipPoint(e);
+      snipCursorX = pt.x;
+      snipCursorY = pt.y;
+
       if (e.pointerType === 'touch' && snipTouchPointers.has(e.pointerId)) {
         const startPt = snipTouchPointers.get(e.pointerId);
-        if (isTwoFingerTapCandidate && Math.hypot(e.clientX - startPt.x, e.clientY - startPt.y) > 25) {
+        if (isTwoFingerTapCandidate && Math.hypot(pt.x - startPt.x, pt.y - startPt.y) > 25) {
           isTwoFingerTapCandidate = false;
         }
       }
-      if (!isSnipping || isTwoFingerTapCandidate) return;
+
+      if (!isSnipping || isTwoFingerTapCandidate) {
+        renderSnippingOverlay(0, 0, 0, 0);
+        return;
+      }
+
       e.preventDefault();
-      snipEndX = e.clientX;
-      snipEndY = e.clientY;
+      snipEndX = pt.x;
+      snipEndY = pt.y;
       renderSnippingOverlay(snipStartX, snipStartY, snipEndX, snipEndY);
     });
 
@@ -2206,7 +2321,7 @@
       snippingLayer.style.display = 'none';
       const rx = Math.min(snipStartX, snipEndX), ry = Math.min(snipStartY, snipEndY);
       const rw = Math.abs(snipEndX - snipStartX), rh = Math.abs(snipEndY - snipStartY);
-      if (rw > 10 && rh > 10) {
+      if (rw > 4 && rh > 4) {
         const dpr = window.devicePixelRatio || 1;
         const cropCanvas = document.createElement('canvas');
         cropCanvas.width = Math.round(rw * dpr);
@@ -2220,7 +2335,7 @@
         );
         const dataUrl = cropCanvas.toDataURL('image/png');
         const rect = canvas.getBoundingClientRect();
-        const wp = screenToWorld(rx - rect.left + 16, ry - rect.top + 16);
+        const wp = screenToWorld(rx - rect.left, ry - rect.top);
         const worldW = rw / viewScale;
         const worldH = rh / viewScale;
 
