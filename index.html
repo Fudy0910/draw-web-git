@@ -248,6 +248,7 @@
       right: calc(78px + env(safe-area-inset-right));
       top: calc(140px + env(safe-area-inset-top));
       width: 240px;
+      max-width: calc(100vw - 92px - env(safe-area-inset-right));
       background: #2b3137;
       border: 1px solid #444;
       border-radius: 12px;
@@ -267,15 +268,15 @@
 
     .color-grid-container { display: flex; flex-direction: column; gap: 6px; }
     .color-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-    .color-box { width: 36px; height: 36px; border: 1px solid #7f9db9; cursor: pointer; border-radius: 6px; }
+    .color-box { width: 100%; aspect-ratio: 1 / 1; max-width: 36px; border: 1px solid #7f9db9; cursor: pointer; border-radius: 6px; }
     .color-box:active { transform: scale(0.92); border-color: #fff; }
 
     .width-section { display: flex; flex-direction: column; gap: 10px; padding: 4px; }
     .size-presets { display: flex; justify-content: space-between; gap: 6px; }
     .size-preset-btn { flex: 1; height: 42px; background: #3a4146; border: 1px solid #555; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
     .size-preset-btn.active { border-color: #007bff; background: #007bff; }
-    .slider-row { display: flex; align-items: center; background: #3a4146; padding: 8px 10px; border-radius: 20px; justify-content: space-between; }
-    .slider-row input[type="range"] { width: 140px; cursor: pointer; }
+    .slider-row { display: flex; align-items: center; background: #3a4146; padding: 8px 10px; border-radius: 20px; justify-content: space-between; gap: 6px; }
+    .slider-row input[type="range"] { flex: 1; min-width: 80px; cursor: pointer; }
     .preview-box { height: 52px; background: #333; border: 1px solid #555; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
 
     .sub-menu {
@@ -304,6 +305,71 @@
     canvas.zoom-out-cursor { cursor: zoom-out; }
     canvas.pan-grab-cursor { cursor: grab; }
     canvas.pan-grabbing-cursor { cursor: grabbing; }
+
+    #zoomBadgeWrapper {
+      position: absolute;
+      left: calc(14px + env(safe-area-inset-left));
+      bottom: calc(14px + env(safe-area-inset-bottom));
+      z-index: 220;
+    }
+
+    #zoomBadge {
+      background: rgba(43, 49, 55, 0.88);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 16px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+    #zoomBadge:hover, #zoomBadge.open { background: rgba(0, 123, 255, 0.94); }
+    #zoomBadge:active { transform: scale(0.95); }
+
+    #zoomPresetMenu {
+      display: none;
+      position: absolute;
+      left: 0;
+      bottom: 38px;
+      width: 112px;
+      max-height: min(320px, calc(100vh - 90px));
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      background: #2b3137;
+      border: 1px solid #4a525a;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.42);
+      padding: 4px;
+      flex-direction: column;
+      gap: 2px;
+    }
+    #zoomPresetMenu.show { display: flex; }
+    #zoomPresetMenu::-webkit-scrollbar { width: 5px; }
+    #zoomPresetMenu::-webkit-scrollbar-thumb { background: #5a636c; border-radius: 4px; }
+
+    .zoom-preset-item {
+      background: transparent;
+      border: none;
+      color: #f1f3f5;
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: right;
+      cursor: pointer;
+      width: 100%;
+      flex-shrink: 0;
+      transition: background 0.12s ease;
+    }
+    .zoom-preset-item:hover { background: #3e464e; color: #ffffff; }
+    .zoom-preset-item.active { background: #007bff; color: #ffffff; }
 
     #dropOverlay {
       position: absolute;
@@ -370,8 +436,8 @@
 
     #opacitySubPanel { display: none; position: absolute; right: 135px; top: 0; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 10px; width: 165px; font-size: 13px; color: #333; z-index: 1010; }
     #opacitySubPanel.show { display: block; }
-    #canvasMenu { position: absolute; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: none; z-index: 1000; padding: 6px; flex-direction: column; }
-    #canvasMenu button { background: transparent; border: none; padding: 9px 14px; text-align: left; font-size: 14px; cursor: pointer; color: #333; border-radius: 6px; height: auto; width: auto; }
+    #canvasMenu { position: absolute; right: auto; width: max-content; min-width: 104px; background: white; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: none; z-index: 1000; padding: 6px; flex-direction: column; }
+    #canvasMenu button { background: transparent; border: none; padding: 9px 14px; text-align: left; font-size: 14px; cursor: pointer; color: #333; border-radius: 6px; height: auto; width: 100%; white-space: nowrap; }
     #canvasMenu button:hover, #canvasMenu button:active { background: #f0f0f0; color: #007bff; }
 
     #snippingLayer {
@@ -420,6 +486,14 @@
 
   <div class="canvas-container" id="canvasContainer">
     <canvas id="paintCanvas" class="brush-cursor"></canvas>
+
+    <div id="zoomBadgeWrapper">
+      <div id="zoomPresetMenu"></div>
+      <button id="zoomBadge" title="點擊選擇放大比例">
+        <span id="zoomBadgeText">100%</span>
+        <span style="font-size:9px; opacity:0.85;">▲</span>
+      </button>
+    </div>
 
     <div id="dropOverlay">
       <div class="drop-card">
@@ -694,6 +768,7 @@
 
     userInput.value = "";
     passInput.value = "";
+    let isLoggingOut = false;
 
     let sharedAudioCtx = null;
     function getAudioCtx() {
@@ -798,8 +873,23 @@
     passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkLogin(); });
     userInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') passInput.focus(); });
 
+    async function clearStoredWhiteboardData() {
+      try { localStorage.removeItem('fudy_canvas_progress'); } catch (e) {}
+      try {
+        const db = await openWhiteboardDB();
+        await new Promise((resolve) => {
+          const tx = db.transaction('state', 'readwrite');
+          tx.objectStore('state').delete('fudy_canvas_progress');
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => resolve();
+        });
+      } catch (e) {}
+    }
+
     logoutBtn.addEventListener('click', () => {
-      if (confirm("確定要登出數位白板系統嗎？")) {
+      if (confirm("確定要登出數位白板系統嗎？（登出時將自動清除本機暫存畫布資料以確保隱私）")) {
+        isLoggingOut = true;
+        clearTimeout(saveDebounceTimer);
         playShutdownSound();
         scanOverlay.style.display = 'flex';
 
@@ -812,7 +902,7 @@
           { p: 15, text: "正在掃描系統核心記憶體區塊..." },
           { p: 35, text: "正在檢測連線埠與網路流量封包..." },
           { p: 60, text: "正在掃描外接裝置與快取檔案..." },
-          { p: 85, text: "清除暫存數據與安全憑證..." },
+          { p: 85, text: "清除暫存數據與安全憑證...", action: clearStoredWhiteboardData },
           { p: 100, text: "系統安全，準備登出。" }
         ];
 
@@ -821,6 +911,7 @@
           if (idx < tasks.length) {
             fill.style.width = tasks[idx].p + '%';
             detail.textContent = `${tasks[idx].text} ${tasks[idx].p}%`;
+            if (tasks[idx].action) tasks[idx].action();
             idx++;
           } else {
             clearInterval(interval);
@@ -834,6 +925,10 @@
     const canvasContainer = document.getElementById('canvasContainer');
     const canvas = document.getElementById('paintCanvas');
     const ctx = canvas.getContext('2d');
+    const zoomBadgeWrapper = document.getElementById('zoomBadgeWrapper');
+    const zoomBadge = document.getElementById('zoomBadge');
+    const zoomBadgeText = document.getElementById('zoomBadgeText');
+    const zoomPresetMenu = document.getElementById('zoomPresetMenu');
     const dropOverlay = document.getElementById('dropOverlay');
     const fileLoadingToast = document.getElementById('fileLoadingToast');
     const fileLoadingText = document.getElementById('fileLoadingText');
@@ -890,6 +985,13 @@
     const opacitySubPanel = document.getElementById('opacitySubPanel');
     const opacityRange = document.getElementById('opacityRange');
     const opacityValText = document.getElementById('opacityValText');
+
+    const MIN_VIEW_SCALE = 0.1;
+    const MAX_VIEW_SCALE = 100.0;
+    const ZOOM_PRESET_PERCENTS = [
+      100, 150, 200, 250, 300, 350, 400, 450, 500,
+      550, 600, 650, 700, 750, 800, 850, 900, 950, 10000
+    ];
 
     let isDrawing = false;
     let activePointerId = null;
@@ -950,12 +1052,93 @@
     let sparkleAnimFrame = null;
     let redrawPending = false;
 
+    function buildZoomPresetMenu() {
+      zoomPresetMenu.innerHTML = '';
+      ZOOM_PRESET_PERCENTS.forEach(pct => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'zoom-preset-item';
+        item.dataset.percent = String(pct);
+        item.textContent = pct + '%';
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          applyPresetZoomPercent(pct);
+          closeZoomPresetMenu();
+        });
+        zoomPresetMenu.appendChild(item);
+      });
+    }
+
+    function openZoomPresetMenu() {
+      updateZoomBadge();
+      zoomPresetMenu.classList.add('show');
+      zoomBadge.classList.add('open');
+      const activeItem = zoomPresetMenu.querySelector('.zoom-preset-item.active');
+      if (activeItem) {
+        activeItem.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    function closeZoomPresetMenu() {
+      zoomPresetMenu.classList.remove('show');
+      zoomBadge.classList.remove('open');
+    }
+
+    function updateZoomBadge() {
+      const currentPct = Math.round(viewScale * 100);
+      if (zoomBadgeText) {
+        zoomBadgeText.textContent = currentPct + '%';
+      }
+      const items = zoomPresetMenu.querySelectorAll('.zoom-preset-item');
+      items.forEach(item => {
+        item.classList.toggle('active', parseInt(item.dataset.percent, 10) === currentPct);
+      });
+    }
+
+    function applyPresetZoomPercent(percent) {
+      const targetScale = Math.min(MAX_VIEW_SCALE, Math.max(MIN_VIEW_SCALE, percent / 100));
+      const cw = canvas.parentElement.clientWidth || window.innerWidth;
+      const ch = canvas.parentElement.clientHeight || window.innerHeight;
+
+      if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0)) {
+        const focusX = groupBounds.x + groupBounds.w / 2;
+        const focusY = groupBounds.y + groupBounds.h / 2;
+        viewScale = targetScale;
+        viewOffsetX = (cw / 2) - focusX * viewScale;
+        viewOffsetY = (ch / 2) - focusY * viewScale;
+        syncPageViewState();
+        if (currentTool === 'eraser') updateEraserCursor();
+        redraw();
+      } else if (targetScale === 1.0 && Math.abs(viewScale - 1.0) < 0.001) {
+        resetViewTransform();
+        redraw();
+      } else {
+        applyZoomAtScreenPoint(cw / 2, ch / 2, null, targetScale);
+      }
+      scheduleSaveProgress(400);
+    }
+
+    buildZoomPresetMenu();
+
+    zoomBadge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (zoomPresetMenu.classList.contains('show')) {
+        closeZoomPresetMenu();
+      } else {
+        openZoomPresetMenu();
+      }
+    });
+
+    zoomPresetMenu.addEventListener('pointerdown', (e) => e.stopPropagation());
+    zoomPresetMenu.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
+
     function syncPageViewState() {
       if (pages[currentPageIndex]) {
         pages[currentPageIndex].viewScale = viewScale;
         pages[currentPageIndex].viewOffsetX = viewOffsetX;
         pages[currentPageIndex].viewOffsetY = viewOffsetY;
       }
+      updateZoomBadge();
     }
 
     function restoreDefaultCursorForCurrentTool() {
@@ -1006,6 +1189,8 @@
           size: p.size,
           opacity: p.opacity !== undefined ? p.opacity : 1.0,
           rotation: p.rotation || 0,
+          noStartTaper: !!p.noStartTaper,
+          noEndTaper: !!p.noEndTaper,
           points: p.points.map(pt => ({ x: pt.x, y: pt.y, t: pt.t, p: pt.p }))
         })),
         images: targetPage.images.map(img => ({
@@ -1034,6 +1219,8 @@
         size: p.size,
         opacity: p.opacity !== undefined ? p.opacity : 1.0,
         rotation: p.rotation || 0,
+        noStartTaper: !!p.noStartTaper,
+        noEndTaper: !!p.noEndTaper,
         points: p.points.map(pt => ({ x: pt.x, y: pt.y, t: pt.t, p: pt.p }))
       }));
 
@@ -1166,37 +1353,75 @@
       });
     }
 
+    let saveDebounceTimer = null;
+    let isSavingProgress = false;
+    let pendingSaveProgress = false;
+
+    function scheduleSaveProgress(delay = 400) {
+      if (isLoggingOut) return;
+      clearTimeout(saveDebounceTimer);
+      saveDebounceTimer = setTimeout(() => {
+        saveProgress();
+      }, delay);
+    }
+
     async function saveProgress() {
-      syncPageViewState();
-      const dataToSave = pages.map(page => ({
-        paths: page.paths,
-        viewScale: page.viewScale !== undefined ? page.viewScale : 1.0,
-        viewOffsetX: page.viewOffsetX !== undefined ? page.viewOffsetX : 0,
-        viewOffsetY: page.viewOffsetY !== undefined ? page.viewOffsetY : 0,
-        images: page.images.map(img => ({
-          x: img.x, y: img.y, w: img.w, h: img.h,
-          src: img.src,
-          opacity: img.opacity !== undefined ? img.opacity : 1.0,
-          rotation: img.rotation || 0
-        }))
-      }));
+      if (isLoggingOut) return;
+      clearTimeout(saveDebounceTimer);
+      if (isSavingProgress) {
+        pendingSaveProgress = true;
+        return;
+      }
+      isSavingProgress = true;
 
       try {
-        const db = await openWhiteboardDB();
-        const tx = db.transaction('state', 'readwrite');
-        tx.objectStore('state').put(dataToSave, 'fudy_canvas_progress');
-      } catch (err) {
+        syncPageViewState();
+        const serializedPages = pages.map(page => ({
+          paths: page.paths,
+          viewScale: page.viewScale !== undefined ? page.viewScale : 1.0,
+          viewOffsetX: page.viewOffsetX !== undefined ? page.viewOffsetX : 0,
+          viewOffsetY: page.viewOffsetY !== undefined ? page.viewOffsetY : 0,
+          images: page.images.map(img => ({
+            x: img.x, y: img.y, w: img.w, h: img.h,
+            src: img.src,
+            opacity: img.opacity !== undefined ? img.opacity : 1.0,
+            rotation: img.rotation || 0
+          }))
+        }));
+
+        const payload = {
+          version: 2,
+          currentPageIndex: currentPageIndex,
+          pages: serializedPages
+        };
+
         try {
-          localStorage.setItem('fudy_canvas_progress', JSON.stringify(dataToSave));
-        } catch (e) {}
+          const db = await openWhiteboardDB();
+          await new Promise((resolve, reject) => {
+            const tx = db.transaction('state', 'readwrite');
+            tx.objectStore('state').put(payload, 'fudy_canvas_progress');
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+          });
+        } catch (err) {
+          try {
+            localStorage.setItem('fudy_canvas_progress', JSON.stringify(payload));
+          } catch (e) {}
+        }
+      } finally {
+        isSavingProgress = false;
+        if (pendingSaveProgress && !isLoggingOut) {
+          pendingSaveProgress = false;
+          saveProgress();
+        }
       }
     }
 
     async function loadProgress() {
-      let parsedPages = null;
+      let rawSaved = null;
       try {
         const db = await openWhiteboardDB();
-        parsedPages = await new Promise((resolve) => {
+        rawSaved = await new Promise((resolve) => {
           const tx = db.transaction('state', 'readonly');
           const req = tx.objectStore('state').get('fudy_canvas_progress');
           req.onsuccess = () => resolve(req.result || null);
@@ -1204,23 +1429,52 @@
         });
       } catch (err) {}
 
-      if (!parsedPages) {
+      if (!rawSaved) {
         try {
-          const saved = localStorage.getItem('fudy_canvas_progress');
-          if (saved) parsedPages = JSON.parse(saved);
+          const savedStr = localStorage.getItem('fudy_canvas_progress');
+          if (savedStr) rawSaved = JSON.parse(savedStr);
         } catch (e) {}
       }
 
+      let parsedPages = null;
+      let savedPageIdx = 0;
+
+      if (Array.isArray(rawSaved)) {
+        parsedPages = rawSaved;
+      } else if (rawSaved && Array.isArray(rawSaved.pages)) {
+        parsedPages = rawSaved.pages;
+        savedPageIdx = typeof rawSaved.currentPageIndex === 'number' ? rawSaved.currentPageIndex : 0;
+      }
+
       if (parsedPages && parsedPages.length > 0) {
-        pages = parsedPages.map(p => ({
-          paths: p.paths || [],
-          images: [],
-          undoStack: [],
-          redoStack: [],
-          viewScale: p.viewScale !== undefined ? p.viewScale : 1.0,
-          viewOffsetX: p.viewOffsetX !== undefined ? p.viewOffsetX : 0,
-          viewOffsetY: p.viewOffsetY !== undefined ? p.viewOffsetY : 0
-        }));
+        pages = parsedPages.map(p => {
+          const restoredPaths = (p.paths || []).map(pathObj => {
+            const copy = {
+              type: pathObj.type,
+              color: pathObj.color,
+              size: pathObj.size,
+              opacity: pathObj.opacity !== undefined ? pathObj.opacity : 1.0,
+              rotation: pathObj.rotation || 0,
+              noStartTaper: !!pathObj.noStartTaper,
+              noEndTaper: !!pathObj.noEndTaper,
+              points: (pathObj.points || []).map(pt => ({ x: pt.x, y: pt.y, t: pt.t, p: pt.p }))
+            };
+            if (copy.rotation) bakePathRotation(copy);
+            return copy;
+          });
+          return {
+            paths: restoredPaths,
+            images: [],
+            undoStack: [],
+            redoStack: [],
+            viewScale: p.viewScale !== undefined ? p.viewScale : 1.0,
+            viewOffsetX: p.viewOffsetX !== undefined ? p.viewOffsetX : 0,
+            viewOffsetY: p.viewOffsetY !== undefined ? p.viewOffsetY : 0
+          };
+        });
+
+        const targetIdx = Math.min(Math.max(0, savedPageIdx), pages.length - 1);
+
         parsedPages.forEach((p, pIdx) => {
           if (p.images && p.images.length > 0) {
             p.images.forEach(imgItem => {
@@ -1237,8 +1491,9 @@
             });
           }
         });
-        switchPage(0);
+        switchPage(targetIdx);
       } else {
+        updateZoomBadge();
         updateUndoRedoButtons();
       }
     }
@@ -1277,7 +1532,19 @@
     }
 
     function restoreOriginalZoomScale() {
-      resetViewTransform();
+      const cw = canvas.parentElement.clientWidth || window.innerWidth;
+      const ch = canvas.parentElement.clientHeight || window.innerHeight;
+      if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0)) {
+        const focusX = groupBounds.x + groupBounds.w / 2;
+        const focusY = groupBounds.y + groupBounds.h / 2;
+        viewScale = 1.0;
+        viewOffsetX = (cw / 2) - focusX;
+        viewOffsetY = (ch / 2) - focusY;
+        syncPageViewState();
+        if (currentTool === 'eraser') updateEraserCursor();
+      } else {
+        resetViewTransform();
+      }
       redraw();
       saveProgress();
     }
@@ -1294,6 +1561,7 @@
       viewScale = page.viewScale !== undefined ? page.viewScale : 1.0;
       viewOffsetX = page.viewOffsetX !== undefined ? page.viewOffsetX : 0;
       viewOffsetY = page.viewOffsetY !== undefined ? page.viewOffsetY : 0;
+      syncPageViewState();
       selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null;
       opacitySubPanel.classList.remove('show');
       if (currentTool === 'eraser') updateEraserCursor();
@@ -1321,8 +1589,18 @@
       }
     });
 
-    prevPageBtn.addEventListener('click', () => { if (currentPageIndex > 0) switchPage(currentPageIndex - 1); });
-    nextPageBtn.addEventListener('click', () => { if (currentPageIndex < pages.length - 1) switchPage(currentPageIndex + 1); });
+    prevPageBtn.addEventListener('click', () => {
+      if (currentPageIndex > 0) {
+        switchPage(currentPageIndex - 1);
+        scheduleSaveProgress(300);
+      }
+    });
+    nextPageBtn.addEventListener('click', () => {
+      if (currentPageIndex < pages.length - 1) {
+        switchPage(currentPageIndex + 1);
+        scheduleSaveProgress(300);
+      }
+    });
 
     let dragCounter = 0;
 
@@ -1335,13 +1613,14 @@
       fileLoadingToast.style.display = 'none';
     }
 
-    function calculateFittedSize(natW, natH, maxRatioW = 0.80, maxRatioH = 0.86) {
+    function calculateFittedSize(natW, natH, maxRatioW = 0.80, maxRatioH = 0.86, ignoreViewScale = false) {
       const cw = canvas.parentElement.clientWidth || 800;
       const ch = canvas.parentElement.clientHeight || 600;
-      const maxW = Math.max(120 / viewScale, (cw * maxRatioW) / viewScale);
-      const maxH = Math.max(120 / viewScale, (ch * maxRatioH) / viewScale);
-      let w = natW / viewScale;
-      let h = natH / viewScale;
+      const effectiveScale = ignoreViewScale ? 1.0 : viewScale;
+      const maxW = Math.max(120 / effectiveScale, (cw * maxRatioW) / effectiveScale);
+      const maxH = Math.max(120 / effectiveScale, (ch * maxRatioH) / effectiveScale);
+      let w = natW / effectiveScale;
+      let h = natH / effectiveScale;
       if (w > maxW || h > maxH) {
         const scale = Math.min(maxW / w, maxH / h);
         w = w * scale;
@@ -1350,19 +1629,24 @@
       return { w, h, cw, ch };
     }
 
-    function placeDataUrlOnPage(pageIdx, dataUrl, dropPos, offsetIdx = 0, centerOnPage = false, recordUndo = true) {
+    function placeDataUrlOnPage(pageIdx, dataUrl, dropPos, offsetIdx = 0, centerOnPage = false, recordUndo = true, ignoreViewScale = false) {
       return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
           imageCache.set(dataUrl, img);
           if (recordUndo) recordUndoStep(pageIdx);
 
-          const { w, h, cw, ch } = calculateFittedSize(img.naturalWidth || img.width, img.naturalHeight || img.height);
+          const { w, h, cw, ch } = calculateFittedSize(img.naturalWidth || img.width, img.naturalHeight || img.height, 0.80, 0.86, ignoreViewScale);
           let x, y;
           if (centerOnPage || !dropPos) {
-            const viewCenter = screenToWorld(cw / 2, ch / 2);
-            x = viewCenter.x - w / 2;
-            y = viewCenter.y - h / 2;
+            const targetPage = pages[pageIdx];
+            const pScale = ignoreViewScale ? 1.0 : (targetPage.viewScale || 1.0);
+            const pOffX = ignoreViewScale ? 0 : (targetPage.viewOffsetX || 0);
+            const pOffY = ignoreViewScale ? 0 : (targetPage.viewOffsetY || 0);
+            const viewCenterX = ((cw / 2) - pOffX) / pScale;
+            const viewCenterY = ((ch / 2) - pOffY) / pScale;
+            x = viewCenterX - w / 2;
+            y = viewCenterY - h / 2;
           } else {
             const cascade = (offsetIdx * 24) / viewScale;
             x = dropPos.x - w / 2 + cascade;
@@ -1395,7 +1679,7 @@
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = async (ev) => {
-          await placeDataUrlOnPage(currentPageIndex, ev.target.result, dropPos, offsetIdx, centerOnPage, true);
+          await placeDataUrlOnPage(currentPageIndex, ev.target.result, dropPos, offsetIdx, centerOnPage, true, false);
           resolve();
         };
         reader.onerror = () => resolve();
@@ -1414,6 +1698,8 @@
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const totalPages = pdf.numPages;
         const startPageIdx = currentPageIndex;
+        const isStartPageEmpty = pages[startPageIdx].paths.length === 0 && pages[startPageIdx].images.length === 0;
+        const firstTargetIdx = isStartPageEmpty ? startPageIdx : (startPageIdx + 1);
 
         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
           showLoadingToast(`正在匯入 PDF（第 ${pageNum} / ${totalPages} 頁）...`);
@@ -1431,15 +1717,27 @@
           await page.render({ canvasContext: offCtx, viewport: viewport }).promise;
           const dataUrl = offCanvas.toDataURL('image/png');
 
-          let targetPageIdx = startPageIdx + (pageNum - 1);
-          if (targetPageIdx >= pages.length) {
-            pages.push({ paths: [], images: [], undoStack: [], redoStack: [], viewScale: 1.0, viewOffsetX: 0, viewOffsetY: 0 });
+          const targetPageIdx = firstTargetIdx + (pageNum - 1);
+          if (!(pageNum === 1 && isStartPageEmpty)) {
+            pages.splice(targetPageIdx, 0, {
+              paths: [],
+              images: [],
+              undoStack: [],
+              redoStack: [],
+              viewScale: 1.0,
+              viewOffsetX: 0,
+              viewOffsetY: 0
+            });
+          } else {
+            pages[targetPageIdx].viewScale = 1.0;
+            pages[targetPageIdx].viewOffsetX = 0;
+            pages[targetPageIdx].viewOffsetY = 0;
           }
 
-          await placeDataUrlOnPage(targetPageIdx, dataUrl, null, 0, true, true);
+          await placeDataUrlOnPage(targetPageIdx, dataUrl, null, 0, true, true, true);
         }
 
-        switchPage(startPageIdx);
+        switchPage(firstTargetIdx);
         saveProgress();
       } catch (err) {
         console.error("PDF 匯入失敗：", err);
@@ -1491,9 +1789,15 @@
 
     window.addEventListener('paste', (e) => {
       if (loginOverlay.style.display !== 'none' || bootScreen.style.display !== 'none') return;
+      const tag = document.activeElement && document.activeElement.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
       if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
         e.preventDefault();
         handleIncomingFiles(e.clipboardData.files, null, true);
+      } else if (clipboard.paths.length > 0 || clipboard.images.length > 0) {
+        e.preventDefault();
+        pasteClipboardAt();
       }
     });
 
@@ -1587,7 +1891,7 @@
           drawSimplePathOn(targetCtx, p.points);
         } else if (p.type === 'soft') {
           targetCtx.strokeStyle = p.color; targetCtx.globalAlpha = pathOpacity;
-          drawSoftPathOn(targetCtx, p.points, p.size);
+          drawSoftPathOn(targetCtx, p.points, p.size, p);
         } else if (p.type === 'sparkle') {
           drawSparklePathOn(targetCtx, p, pathOpacity);
         } else {
@@ -1658,8 +1962,8 @@
           const screenRightX = (groupBounds.x + groupBounds.w) * viewScale + viewOffsetX;
           const screenTopY = groupBounds.y * viewScale + viewOffsetY;
           topRightMenuWrapper.style.display = 'block';
-          topRightMenuWrapper.style.left = Math.min(width - 42, Math.max(8, screenRightX - 17)) + 'px';
-          topRightMenuWrapper.style.top = Math.max(8, screenTopY - 38) + 'px';
+          topRightMenuWrapper.style.left = Math.min(width - 44, Math.max(8, screenRightX - 17)) + 'px';
+          topRightMenuWrapper.style.top = Math.min(height - 44, Math.max(8, screenTopY - 38)) + 'px';
         } else {
           topRightMenuWrapper.style.display = 'none';
           objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show');
@@ -1724,7 +2028,7 @@
       targetCtx.stroke();
     }
 
-    function drawSoftPathOn(targetCtx, points, baseSize) {
+    function drawSoftPathOn(targetCtx, points, baseSize, options = {}) {
       const n = points.length;
       if (n === 0) return;
       if (n === 1) {
@@ -1756,6 +2060,9 @@
       let smoothedSpeed = 6.0;
       let smoothedW = baseSize * 0.85;
 
+      const startTaperLen = options.noStartTaper ? 0 : Math.min(baseSize * 2.2, totalLen * 0.22);
+      const endTaperLen = options.noEndTaper ? 0 : Math.min(baseSize * 3.6, totalLen * 0.32);
+
       for (let i = 0; i < n; i++) {
         if (i > 0) {
           const dist = cumDist[i] - cumDist[i - 1];
@@ -1777,8 +2084,6 @@
 
         const dStart = cumDist[i];
         const dEnd = totalLen - dStart;
-        const startTaperLen = Math.min(baseSize * 2.2, totalLen * 0.22);
-        const endTaperLen = Math.min(baseSize * 3.6, totalLen * 0.32);
 
         let taper = 1.0;
         if (startTaperLen > 0 && dStart < startTaperLen) {
@@ -1903,7 +2208,6 @@
       document.getElementById('zoomOutBtn').classList.toggle('active', mode === 'out');
       activeTouchEraserPos = null;
       restoreDefaultCursorForCurrentTool();
-      selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null;
       redraw();
     }
 
@@ -1919,34 +2223,100 @@
     document.getElementById('zoomInBtn').addEventListener('click', (e) => {
       e.stopPropagation();
       setZoomMode('in');
+      const cw = canvas.parentElement.clientWidth || window.innerWidth;
+      const ch = canvas.parentElement.clientHeight || window.innerHeight;
+      if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0)) {
+        const focusX = groupBounds.x + groupBounds.w / 2;
+        const focusY = groupBounds.y + groupBounds.h / 2;
+        viewScale = Math.min(MAX_VIEW_SCALE, Math.max(MIN_VIEW_SCALE, viewScale * 1.25));
+        viewOffsetX = (cw / 2) - focusX * viewScale;
+        viewOffsetY = (ch / 2) - focusY * viewScale;
+        syncPageViewState();
+        redraw();
+      } else {
+        applyZoomAtScreenPoint(cw / 2, ch / 2, 'in');
+      }
+      scheduleSaveProgress(400);
       zoomDropdown.classList.remove('show-sub');
     });
 
     document.getElementById('zoomOutBtn').addEventListener('click', (e) => {
       e.stopPropagation();
       setZoomMode('out');
+      const cw = canvas.parentElement.clientWidth || window.innerWidth;
+      const ch = canvas.parentElement.clientHeight || window.innerHeight;
+      if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0)) {
+        const focusX = groupBounds.x + groupBounds.w / 2;
+        const focusY = groupBounds.y + groupBounds.h / 2;
+        viewScale = Math.min(MAX_VIEW_SCALE, Math.max(MIN_VIEW_SCALE, viewScale / 1.25));
+        if (Math.abs(viewScale - 1.0) < 0.04) viewScale = 1.0;
+        viewOffsetX = (cw / 2) - focusX * viewScale;
+        viewOffsetY = (ch / 2) - focusY * viewScale;
+        syncPageViewState();
+        redraw();
+      } else {
+        applyZoomAtScreenPoint(cw / 2, ch / 2, 'out');
+      }
+      scheduleSaveProgress(400);
       zoomDropdown.classList.remove('show-sub');
     });
 
     document.getElementById('zoomResetBtn').addEventListener('click', (e) => {
       e.stopPropagation();
-      setZoomMode(zoomMode);
       restoreOriginalZoomScale();
       zoomDropdown.classList.remove('show-sub');
     });
+
+    function getRotatedRectAABB(img) {
+      const rot = img.rotation || 0;
+      if (!rot) {
+        return { minX: img.x, minY: img.y, maxX: img.x + img.w, maxY: img.y + img.h };
+      }
+      const cx = img.x + img.w / 2;
+      const cy = img.y + img.h / 2;
+      const cos = Math.cos(rot);
+      const sin = Math.sin(rot);
+      const hw = img.w / 2;
+      const hh = img.h / 2;
+      const ex = Math.abs(hw * cos) + Math.abs(hh * sin);
+      const ey = Math.abs(hw * sin) + Math.abs(hh * cos);
+      return {
+        minX: cx - ex,
+        minY: cy - ey,
+        maxX: cx + ex,
+        maxY: cy + ey
+      };
+    }
+
+    function isPointInRotatedRect(px, py, img, pad = 0) {
+      const cx = img.x + img.w / 2;
+      const cy = img.y + img.h / 2;
+      const rot = img.rotation || 0;
+      const dx = px - cx;
+      const dy = py - cy;
+      const cos = Math.cos(-rot);
+      const sin = Math.sin(-rot);
+      const lx = dx * cos - dy * sin;
+      const ly = dx * sin + dy * cos;
+      return Math.abs(lx) <= (img.w / 2 + pad) && Math.abs(ly) <= (img.h / 2 + pad);
+    }
 
     function updateGroupBounds() {
       if (selectedPaths.length === 0 && selectedImages.length === 0) {
         groupBounds = null; topRightMenuWrapper.style.display = 'none'; return;
       }
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      selectedPaths.forEach(p => p.points.forEach(pt => {
-        if (pt.x < minX) minX = pt.x; if (pt.y < minY) minY = pt.y;
-        if (pt.x > maxX) maxX = pt.x; if (pt.y > maxY) maxY = pt.y;
-      }));
+      selectedPaths.forEach(p => {
+        if (p.rotation) bakePathRotation(p);
+        p.points.forEach(pt => {
+          if (pt.x < minX) minX = pt.x; if (pt.y < minY) minY = pt.y;
+          if (pt.x > maxX) maxX = pt.x; if (pt.y > maxY) maxY = pt.y;
+        });
+      });
       selectedImages.forEach(img => {
-        if (img.x < minX) minX = img.x; if (img.y < minY) minY = img.y;
-        if (img.x + img.w > maxX) maxX = img.x + img.w; if (img.y + img.h > maxY) maxY = img.y + img.h;
+        const box = getRotatedRectAABB(img);
+        if (box.minX < minX) minX = box.minX; if (box.minY < minY) minY = box.minY;
+        if (box.maxX > maxX) maxX = box.maxX; if (box.maxY > maxY) maxY = box.maxY;
       });
       groupBounds = { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
     }
@@ -1973,7 +2343,8 @@
       selectedImages.forEach(img => img.opacity = val);
       selectedPaths.forEach(p => p.opacity = val);
       pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
-      scheduleRedraw(); saveProgress();
+      scheduleRedraw();
+      scheduleSaveProgress(400);
     });
 
     opacityRange.addEventListener('change', () => {
@@ -1981,6 +2352,7 @@
         pushHistorySnapshot(opacityDragSnapshot);
       }
       opacityDragSnapshot = null;
+      saveProgress();
     });
 
     document.getElementById('menuSelect').addEventListener('click', () => { objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); });
@@ -2012,50 +2384,74 @@
     }
 
     function copySelected() {
+      selectedPaths.forEach(p => { if (p.rotation) bakePathRotation(p); });
       clipboard.paths = JSON.parse(JSON.stringify(selectedPaths));
       clipboard.images = selectedImages.map(img => ({
-        x: img.x, y: img.y, w: img.w, h: img.h, src: img.src, opacity: img.opacity, rotation: img.rotation
+        x: img.x, y: img.y, w: img.w, h: img.h, src: img.src, opacity: img.opacity, rotation: img.rotation || 0
       }));
     }
 
     function pasteClipboardAt(posX, posY) {
       if (clipboard.paths.length === 0 && clipboard.images.length === 0) return;
-      recordUndoStep();
+      const targetPageIdx = currentPageIndex;
+      const targetPage = pages[targetPageIdx];
+      recordUndoStep(targetPageIdx);
       selectedPaths = []; selectedImages = [];
+
       let minX = Infinity, minY = Infinity;
-      clipboard.paths.forEach(p => p.points.forEach(pt => { if(pt.x < minX) minX = pt.x; if(pt.y < minY) minY = pt.y; }));
-      clipboard.images.forEach(img => { if(img.x < minX) minX = img.x; if(img.y < minY) minY = img.y; });
+      clipboard.paths.forEach(p => p.points.forEach(pt => { if (pt.x < minX) minX = pt.x; if (pt.y < minY) minY = pt.y; }));
+      clipboard.images.forEach(img => {
+        const box = getRotatedRectAABB(img);
+        if (box.minX < minX) minX = box.minX;
+        if (box.minY < minY) minY = box.minY;
+      });
+
       const offsetX = (posX !== undefined && minX !== Infinity) ? posX - minX : (40 / viewScale);
       const offsetY = (posY !== undefined && minY !== Infinity) ? posY - minY : (40 / viewScale);
+
       clipboard.paths.forEach(p => {
         const newP = JSON.parse(JSON.stringify(p));
         newP.points.forEach(pt => { pt.x += offsetX; pt.y += offsetY; });
-        paths.push(newP); selectedPaths.push(newP);
+        targetPage.paths.push(newP);
+        selectedPaths.push(newP);
       });
-      if (clipboard.images.length === 0) {
-        pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
-        updateGroupBounds(); prepareTransformBackup(); redraw(); saveProgress();
-        return;
-      }
-      let loadedCount = 0;
+
       clipboard.images.forEach(item => {
-        const img = new Image();
-        img.onload = () => {
-          imageCache.set(item.src, img);
-          const newImgObj = { img: img, x: item.x + offsetX, y: item.y + offsetY, w: item.w, h: item.h, src: item.src, opacity: item.opacity, rotation: item.rotation };
-          images.push(newImgObj); selectedImages.push(newImgObj); loadedCount++;
-          if (loadedCount === clipboard.images.length) {
-            pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
-            updateGroupBounds(); prepareTransformBackup(); redraw(); saveProgress();
-          }
+        const img = getCachedImage(item.src, () => {
+          if (currentPageIndex === targetPageIdx) redraw();
+        });
+        const newImgObj = {
+          img: img,
+          x: item.x + offsetX,
+          y: item.y + offsetY,
+          w: item.w,
+          h: item.h,
+          src: item.src,
+          opacity: item.opacity !== undefined ? item.opacity : 1.0,
+          rotation: item.rotation || 0
         };
-        img.src = item.src;
+        targetPage.images.push(newImgObj);
+        selectedImages.push(newImgObj);
       });
+
+      paths = targetPage.paths;
+      images = targetPage.images;
+      updateGroupBounds();
+      prepareTransformBackup();
+      redraw();
+      saveProgress();
     }
 
     function prepareTransformBackup() {
+      selectedPaths.forEach(p => { if (p.rotation) bakePathRotation(p); });
       origGroupBounds = groupBounds ? { x: groupBounds.x, y: groupBounds.y, w: groupBounds.w, h: groupBounds.h } : null;
-      selectedImages.forEach(img => { img.origX = img.x; img.origY = img.y; img.origW = img.w; img.origH = img.h; });
+      selectedImages.forEach(img => {
+        img.origX = img.x;
+        img.origY = img.y;
+        img.origW = img.w;
+        img.origH = img.h;
+        img.origRotation = img.rotation || 0;
+      });
       selectedPaths.forEach(p => {
         p.origSize = p.size;
         p.origPoints = p.points.map(pt => ({ x: pt.x, y: pt.y, t: pt.t, p: pt.p }));
@@ -2140,6 +2536,9 @@
           };
           return;
         } catch (err) {
+          if (err && (err.name === 'NotAllowedError' || err.name === 'AbortError')) {
+            return;
+          }
           console.log("外部螢幕擷取未啟用，改用白板局部擷取", err);
         }
       }
@@ -2420,6 +2819,7 @@
       if (!penDropdown.contains(e.target)) penDropdown.classList.remove('show-sub');
       if (!eraserDropdown.contains(e.target)) eraserDropdown.classList.remove('show-sub');
       if (!zoomDropdown.contains(e.target)) zoomDropdown.classList.remove('show-sub');
+      if (!zoomBadgeWrapper.contains(e.target)) closeZoomPresetMenu();
       if (!advancedPanel.contains(e.target) && !colorBtn.contains(e.target)) advancedPanel.classList.remove('show');
       if (!topRightMenuWrapper.contains(e.target)) { objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); }
       if (!canvasMenu.contains(e.target)) canvasMenu.style.display = 'none';
@@ -2547,7 +2947,7 @@
       let nextScale = customScale !== null
         ? customScale
         : (mode === 'in' ? (viewScale * 1.25) : (viewScale / 1.25));
-      nextScale = Math.min(10.0, Math.max(0.1, nextScale));
+      nextScale = Math.min(MAX_VIEW_SCALE, Math.max(MIN_VIEW_SCALE, nextScale));
       if (customScale === null && Math.abs(nextScale - 1.0) < 0.04) nextScale = 1.0;
 
       viewScale = nextScale;
@@ -2567,18 +2967,76 @@
         const sy = e.clientY - rect.top;
         const factor = Math.exp(-e.deltaY * 0.002);
         applyZoomAtScreenPoint(sx, sy, null, viewScale * factor);
+        scheduleSaveProgress(500);
       }
     }, { passive: false });
+
+    function distToSegment(px, py, x1, y1, x2, y2) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq < 1e-10) return Math.hypot(px - x1, py - y1);
+      let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+    }
+
+    function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+      const ccw = (p1x, p1y, p2x, p2y, p3x, p3y) =>
+        (p3y - p1y) * (p2x - p1x) > (p2y - p1y) * (p3x - p1x);
+      const d1 = ccw(ax, ay, cx, cy, dx, dy);
+      const d2 = ccw(bx, by, cx, cy, dx, dy);
+      const d3 = ccw(ax, ay, bx, by, cx, cy);
+      const d4 = ccw(ax, ay, bx, by, dx, dy);
+      if (d1 !== d2 && d3 !== d4) return true;
+      return (
+        distToSegment(ax, ay, cx, cy, dx, dy) < 1e-6 ||
+        distToSegment(bx, by, cx, cy, dx, dy) < 1e-6 ||
+        distToSegment(cx, cy, ax, ay, bx, by) < 1e-6 ||
+        distToSegment(dx, dy, ax, ay, bx, by) < 1e-6
+      );
+    }
+
+    function segmentIntersectsRect(x1, y1, x2, y2, rx, ry, rw, rh) {
+      const rx2 = rx + rw;
+      const ry2 = ry + rh;
+      if ((x1 >= rx && x1 <= rx2 && y1 >= ry && y1 <= ry2) ||
+          (x2 >= rx && x2 <= rx2 && y2 >= ry && y2 <= ry2)) {
+        return true;
+      }
+      return (
+        segmentsIntersect(x1, y1, x2, y2, rx, ry, rx2, ry) ||
+        segmentsIntersect(x1, y1, x2, y2, rx2, ry, rx2, ry2) ||
+        segmentsIntersect(x1, y1, x2, y2, rx2, ry2, rx, ry2) ||
+        segmentsIntersect(x1, y1, x2, y2, rx, ry2, rx, ry)
+      );
+    }
 
     function hitTestObject(pos) {
       const hitRadius = 18 / viewScale;
       for (let i = paths.length - 1; i >= 0; i--) {
         const p = paths[i];
-        if (p.points.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) <= Math.max(hitRadius, p.size))) return { type: 'path', obj: p };
+        if (!p.points || p.points.length === 0) continue;
+        if (p.rotation) bakePathRotation(p);
+        const strokeHalfW = (p.type === 'highlighter' ? p.size * 2.5 : p.size) * 0.5;
+        const threshold = Math.max(hitRadius, strokeHalfW);
+        if (p.points.length === 1) {
+          if (Math.hypot(p.points[0].x - pos.x, p.points[0].y - pos.y) <= threshold) {
+            return { type: 'path', obj: p };
+          }
+        } else {
+          for (let j = 0; j < p.points.length - 1; j++) {
+            const a = p.points[j];
+            const b = p.points[j + 1];
+            if (distToSegment(pos.x, pos.y, a.x, a.y, b.x, b.y) <= threshold) {
+              return { type: 'path', obj: p };
+            }
+          }
+        }
       }
       for (let i = images.length - 1; i >= 0; i--) {
         const img = images[i];
-        if (pos.x >= img.x && pos.x <= img.x + img.w && pos.y >= img.y && pos.y <= img.y + img.h) return { type: 'image', obj: img };
+        if (isPointInRotatedRect(pos.x, pos.y, img, 0)) return { type: 'image', obj: img };
       }
       return null;
     }
@@ -2688,7 +3146,7 @@
         pendingHistorySnapshot = capturePageState();
         if (currentTool === 'pen') {
           const stampedPos = { x: pos.x, y: pos.y, t: performance.now(), p: pos.p };
-          currentPath = { type: penType, color: currentColor, size: parseInt(sizeRange.value), points: [stampedPos], opacity: 1.0, rotation: 0 };
+          currentPath = { type: penType, color: currentColor, size: parseInt(sizeRange.value), points: [stampedPos], opacity: 1.0, rotation: 0, noStartTaper: false, noEndTaper: false };
           paths.push(currentPath); pages[currentPageIndex].paths = paths; scheduleRedraw();
         } else if (currentTool === 'eraser' && eraserType === 'lasso') { lassoPoints = [pos]; scheduleRedraw(); }
         else if (currentTool === 'eraser' && eraserType === 'object') { eraseObjectAt(pos); }
@@ -2726,6 +3184,7 @@
       if (currentTool === 'zoom') return;
       const pos = getPointerPos(e);
       if (currentTool === 'select') {
+        const minWorldSize = Math.max(0.2, 12 / viewScale);
         if (interactionState === 'dragging') {
           const dx = pos.x - dragStartX, dy = pos.y - dragStartY;
           dragStartX = pos.x; dragStartY = pos.y;
@@ -2738,23 +3197,27 @@
           const origTop = origGroupBounds.y;
           const origW = origGroupBounds.w;
           const origH = origGroupBounds.h;
-          const newW = Math.max(20, origRight - pos.x);
-          const newH = Math.max(20, pos.y - origTop);
+          const newW = Math.max(minWorldSize, origRight - pos.x);
+          const newH = Math.max(minWorldSize, pos.y - origTop);
 
           let avgScale = 1;
-          if (origW < 2 && origH < 2) avgScale = 1;
-          else if (origW < 2) avgScale = newH / origH;
-          else if (origH < 2) avgScale = newW / origW;
+          if (origW < 0.05 && origH < 0.05) avgScale = 1;
+          else if (origW < 0.05) avgScale = newH / origH;
+          else if (origH < 0.05) avgScale = newW / origW;
           else avgScale = ((newW / origW) + (newH / origH)) / 2;
 
           selectedImages.forEach(img => {
-            img.x = origRight + (img.origX - origRight) * avgScale;
-            img.y = origTop + (img.origY - origTop) * avgScale;
-            img.w = Math.max(10, img.origW * avgScale);
-            img.h = Math.max(10, img.origH * avgScale);
+            const origCx = img.origX + img.origW / 2;
+            const origCy = img.origY + img.origH / 2;
+            const newCx = origRight + (origCx - origRight) * avgScale;
+            const newCy = origTop + (origCy - origTop) * avgScale;
+            img.w = Math.max(0.1, img.origW * avgScale);
+            img.h = Math.max(0.1, img.origH * avgScale);
+            img.x = newCx - img.w / 2;
+            img.y = newCy - img.h / 2;
           });
           selectedPaths.forEach(p => {
-            if (p.origSize !== undefined) p.size = Math.max(1, p.origSize * avgScale);
+            if (p.origSize !== undefined) p.size = Math.max(0.1, p.origSize * avgScale);
             p.points.forEach((pt, idx) => {
               const origPt = p.origPoints[idx];
               pt.x = origRight + (origPt.x - origRight) * avgScale;
@@ -2767,12 +3230,20 @@
         } else if (interactionState === 'resizing-e' && origGroupBounds) {
           const origLeft = origGroupBounds.x;
           const origW = origGroupBounds.w;
-          const newW = Math.max(10, pos.x - origLeft);
-          const scaleX = origW < 2 ? 1 : newW / origW;
+          const newW = Math.max(minWorldSize, pos.x - origLeft);
+          const scaleX = origW < 0.05 ? 1 : newW / origW;
 
           selectedImages.forEach(img => {
-            img.x = origLeft + (img.origX - origLeft) * scaleX;
-            img.w = Math.max(5, img.origW * scaleX);
+            const rot = img.origRotation || 0;
+            const cos = Math.cos(rot), sin = Math.sin(rot);
+            const origCx = img.origX + img.origW / 2;
+            const newCx = origLeft + (origCx - origLeft) * scaleX;
+            const newImgW = Math.max(0.1, img.origW * Math.hypot(scaleX * cos, sin));
+            const newImgH = Math.max(0.1, img.origH * Math.hypot(-scaleX * sin, cos));
+            img.w = newImgW;
+            img.h = newImgH;
+            img.x = newCx - newImgW / 2;
+            img.y = (img.origY + img.origH / 2) - newImgH / 2;
           });
           selectedPaths.forEach(p => {
             p.points.forEach((pt, idx) => {
@@ -2787,12 +3258,20 @@
         } else if (interactionState === 'resizing-w' && origGroupBounds) {
           const origRight = origGroupBounds.x + origGroupBounds.w;
           const origW = origGroupBounds.w;
-          const newW = Math.max(10, origRight - pos.x);
-          const scaleX = origW < 2 ? 1 : newW / origW;
+          const newW = Math.max(minWorldSize, origRight - pos.x);
+          const scaleX = origW < 0.05 ? 1 : newW / origW;
 
           selectedImages.forEach(img => {
-            img.x = origRight + (img.origX - origRight) * scaleX;
-            img.w = Math.max(5, img.origW * scaleX);
+            const rot = img.origRotation || 0;
+            const cos = Math.cos(rot), sin = Math.sin(rot);
+            const origCx = img.origX + img.origW / 2;
+            const newCx = origRight + (origCx - origRight) * scaleX;
+            const newImgW = Math.max(0.1, img.origW * Math.hypot(scaleX * cos, sin));
+            const newImgH = Math.max(0.1, img.origH * Math.hypot(-scaleX * sin, cos));
+            img.w = newImgW;
+            img.h = newImgH;
+            img.x = newCx - newImgW / 2;
+            img.y = (img.origY + img.origH / 2) - newImgH / 2;
           });
           selectedPaths.forEach(p => {
             p.points.forEach((pt, idx) => {
@@ -2807,12 +3286,20 @@
         } else if (interactionState === 'resizing-s' && origGroupBounds) {
           const origTop = origGroupBounds.y;
           const origH = origGroupBounds.h;
-          const newH = Math.max(10, pos.y - origTop);
-          const scaleY = origH < 2 ? 1 : newH / origH;
+          const newH = Math.max(minWorldSize, pos.y - origTop);
+          const scaleY = origH < 0.05 ? 1 : newH / origH;
 
           selectedImages.forEach(img => {
-            img.y = origTop + (img.origY - origTop) * scaleY;
-            img.h = Math.max(5, img.origH * scaleY);
+            const rot = img.origRotation || 0;
+            const cos = Math.cos(rot), sin = Math.sin(rot);
+            const origCy = img.origY + img.origH / 2;
+            const newCy = origTop + (origCy - origTop) * scaleY;
+            const newImgW = Math.max(0.1, img.origW * Math.hypot(cos, scaleY * sin));
+            const newImgH = Math.max(0.1, img.origH * Math.hypot(-sin, scaleY * cos));
+            img.w = newImgW;
+            img.h = newImgH;
+            img.x = (img.origX + img.origW / 2) - newImgW / 2;
+            img.y = newCy - newImgH / 2;
           });
           selectedPaths.forEach(p => {
             p.points.forEach((pt, idx) => {
@@ -2827,12 +3314,20 @@
         } else if (interactionState === 'resizing-n' && origGroupBounds) {
           const origBottom = origGroupBounds.y + origGroupBounds.h;
           const origH = origGroupBounds.h;
-          const newH = Math.max(10, origBottom - pos.y);
-          const scaleY = origH < 2 ? 1 : newH / origH;
+          const newH = Math.max(minWorldSize, origBottom - pos.y);
+          const scaleY = origH < 0.05 ? 1 : newH / origH;
 
           selectedImages.forEach(img => {
-            img.y = origBottom + (img.origY - origBottom) * scaleY;
-            img.h = Math.max(5, img.origH * scaleY);
+            const rot = img.origRotation || 0;
+            const cos = Math.cos(rot), sin = Math.sin(rot);
+            const origCy = img.origY + img.origH / 2;
+            const newCy = origBottom + (origCy - origBottom) * scaleY;
+            const newImgW = Math.max(0.1, img.origW * Math.hypot(cos, scaleY * sin));
+            const newImgH = Math.max(0.1, img.origH * Math.hypot(-sin, scaleY * cos));
+            img.w = newImgW;
+            img.h = newImgH;
+            img.x = (img.origX + img.origW / 2) - newImgW / 2;
+            img.y = newCy - newImgH / 2;
           });
           selectedPaths.forEach(p => {
             p.points.forEach((pt, idx) => {
@@ -2844,11 +3339,37 @@
           updateGroupBounds();
           pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
           scheduleRedraw();
-        } else if (interactionState === 'rotating') {
-          const cx = groupBounds.x + groupBounds.w / 2, cy = groupBounds.y + groupBounds.h / 2;
-          const angle = Math.atan2(pos.y - cy, pos.x - cx) - Math.atan2(-26 / viewScale, 0);
-          selectedImages.forEach(img => img.rotation = angle);
-          selectedPaths.forEach(p => p.rotation = angle);
+        } else if (interactionState === 'rotating' && origGroupBounds) {
+          const cx = origGroupBounds.x + origGroupBounds.w / 2;
+          const cy = origGroupBounds.y + origGroupBounds.h / 2;
+          const deltaAngle = Math.atan2(pos.y - cy, pos.x - cx) - (-Math.PI / 2);
+          const cos = Math.cos(deltaAngle);
+          const sin = Math.sin(deltaAngle);
+
+          selectedImages.forEach(img => {
+            const origImgCx = img.origX + img.origW / 2;
+            const origImgCy = img.origY + img.origH / 2;
+            const dx = origImgCx - cx;
+            const dy = origImgCy - cy;
+            const newImgCx = cx + dx * cos - dy * sin;
+            const newImgCy = cy + dx * sin + dy * cos;
+            img.x = newImgCx - img.origW / 2;
+            img.y = newImgCy - img.origH / 2;
+            img.rotation = (img.origRotation || 0) + deltaAngle;
+          });
+
+          selectedPaths.forEach(p => {
+            p.rotation = 0;
+            p.points.forEach((pt, idx) => {
+              const origPt = p.origPoints[idx];
+              const dx = origPt.x - cx;
+              const dy = origPt.y - cy;
+              pt.x = cx + dx * cos - dy * sin;
+              pt.y = cy + dx * sin + dy * cos;
+            });
+          });
+
+          updateGroupBounds();
           pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
           scheduleRedraw();
         } else if (isSelecting) {
@@ -2899,7 +3420,7 @@
           const sp = getScreenPos(e);
           applyZoomAtScreenPoint(sp.x, sp.y, zoomMode);
         }
-        saveProgress();
+        scheduleSaveProgress(400);
         return;
       }
 
@@ -2921,26 +3442,45 @@
           saveProgress();
         } else if (isSelecting) {
           isSelecting = false;
-          selectedImages = images.filter(img => 
-            img.x < selectionBox.x + selectionBox.w && 
-            img.x + img.w > selectionBox.x && 
-            img.y < selectionBox.y + selectionBox.h && 
-            img.y + img.h > selectionBox.y
-          );
-          selectedPaths = paths.filter(p => 
-            p.points.some(pt => 
-              pt.x >= selectionBox.x && 
-              pt.x <= selectionBox.x + selectionBox.w && 
-              pt.y >= selectionBox.y && 
-              pt.y <= selectionBox.y + selectionBox.h
-            )
-          );
+          selectedImages = images.filter(img => {
+            const box = getRotatedRectAABB(img);
+            return (
+              box.minX < selectionBox.x + selectionBox.w &&
+              box.maxX > selectionBox.x &&
+              box.minY < selectionBox.y + selectionBox.h &&
+              box.maxY > selectionBox.y
+            );
+          });
+          selectedPaths = paths.filter(p => {
+            if (!p.points || p.points.length === 0) return false;
+            if (p.rotation) bakePathRotation(p);
+            if (p.points.length === 1) {
+              const pt = p.points[0];
+              return (
+                pt.x >= selectionBox.x &&
+                pt.x <= selectionBox.x + selectionBox.w &&
+                pt.y >= selectionBox.y &&
+                pt.y <= selectionBox.y + selectionBox.h
+              );
+            }
+            for (let j = 0; j < p.points.length - 1; j++) {
+              const a = p.points[j];
+              const b = p.points[j + 1];
+              if (segmentIntersectsRect(a.x, a.y, b.x, b.y, selectionBox.x, selectionBox.y, selectionBox.w, selectionBox.h)) {
+                return true;
+              }
+            }
+            return false;
+          });
           updateGroupBounds(); selectionBox = null; prepareTransformBackup(); redraw();
         }
       } else if (isDrawing) {
         isDrawing = false;
         if (currentTool === 'eraser' && eraserType === 'lasso' && lassoPoints.length > 2) {
-          paths = paths.filter(p => !p.points.some(pt => isPointInPolygon(pt, lassoPoints)));
+          paths = paths.filter(p => {
+            if (p.rotation) bakePathRotation(p);
+            return !p.points.some(pt => isPointInPolygon(pt, lassoPoints));
+          });
           pages[currentPageIndex].paths = paths; lassoPoints = []; redraw();
         } else if (currentTool === 'eraser' && eraserType === 'lasso') { lassoPoints = []; redraw(); }
         if (pendingHistorySnapshot && !isSamePageState(pendingHistorySnapshot, capturePageState())) {
@@ -2996,16 +3536,20 @@
       startPos = sp;
 
       if (currentTool === 'select' && !groupBounds && !spaceKeyPressed && e.button !== 1) {
+        const cw = canvas.parentElement.clientWidth || window.innerWidth;
+        const ch = canvas.parentElement.clientHeight || window.innerHeight;
+        const clampedX = Math.min(cw - 110, Math.max(8, sp.x));
+        const clampedY = Math.min(ch - 52, Math.max(8, sp.y));
         if (e.button === 2) {
           menuOpenPos = pos; canvasMenu.style.display = 'flex';
-          canvasMenu.style.left = sp.x + 'px'; canvasMenu.style.top = sp.y + 'px';
+          canvasMenu.style.left = clampedX + 'px'; canvasMenu.style.top = clampedY + 'px';
           return;
         } else {
           clearTimeout(blankLongPressTimer);
           if (!hitTestObject(pos)) {
             blankLongPressTimer = setTimeout(() => {
               menuOpenPos = pos; canvasMenu.style.display = 'flex';
-              canvasMenu.style.left = sp.x + 'px'; canvasMenu.style.top = sp.y + 'px';
+              canvasMenu.style.left = clampedX + 'px'; canvasMenu.style.top = clampedY + 'px';
             }, 500);
           }
         }
@@ -3026,7 +3570,7 @@
 
           const worldAtPrevMid = screenToWorld(prevTwoFingerMidX, prevTwoFingerMidY);
           const scaleFactor = newDist / prevTwoFingerDist;
-          viewScale = Math.min(10.0, Math.max(0.1, viewScale * scaleFactor));
+          viewScale = Math.min(MAX_VIEW_SCALE, Math.max(MIN_VIEW_SCALE, viewScale * scaleFactor));
           viewOffsetX = newMidX - worldAtPrevMid.x * viewScale;
           viewOffsetY = newMidY - worldAtPrevMid.y * viewScale;
 
@@ -3054,7 +3598,7 @@
         if (isTwoFingerGesture) {
           if (activeCanvasTouches.size === 0) {
             isTwoFingerGesture = false;
-            saveProgress();
+            scheduleSaveProgress(400);
           }
           return;
         }
@@ -3117,10 +3661,6 @@
           deleteSelected();
           saveProgress();
         }
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
-        pasteClipboardAt();
-        saveProgress();
       }
     });
 
@@ -3261,17 +3801,18 @@
         return;
       }
       const prev = seg[seg.length - 1];
-      if (Math.hypot(pt.x - prev.x, pt.y - prev.y) > 0.05) {
+      if (Math.hypot(pt.x - prev.x, pt.y - prev.y) > 0.005) {
         seg.push(pt);
       }
     }
 
     function eraseAlongSegment(pos1, pos2) {
-      const radius = getNormalEraserRadius();
-      const capMinX = Math.min(pos1.x, pos2.x) - radius;
-      const capMaxX = Math.max(pos1.x, pos2.x) + radius;
-      const capMinY = Math.min(pos1.y, pos2.y) - radius;
-      const capMaxY = Math.max(pos1.y, pos2.y) + radius;
+      const baseRadius = getNormalEraserRadius();
+      const maxProbeRadius = baseRadius + 80;
+      const capMinX = Math.min(pos1.x, pos2.x) - maxProbeRadius;
+      const capMaxX = Math.max(pos1.x, pos2.x) + maxProbeRadius;
+      const capMinY = Math.min(pos1.y, pos2.y) - maxProbeRadius;
+      const capMaxY = Math.max(pos1.y, pos2.y) + maxProbeRadius;
 
       const newPaths = [];
       let changed = false;
@@ -3279,6 +3820,9 @@
       for (let idx = 0; idx < paths.length; idx++) {
         const p = paths[idx];
         if (!p.points || p.points.length === 0) continue;
+
+        const strokeHalfW = (p.type === 'highlighter' ? p.size * 2.5 : p.size) * 0.5;
+        const effectiveRadius = baseRadius + strokeHalfW * 0.85;
 
         let pMinX = Infinity, pMinY = Infinity, pMaxX = -Infinity, pMaxY = -Infinity;
         for (let k = 0; k < p.points.length; k++) {
@@ -3307,7 +3851,7 @@
 
         if (p.points.length === 1) {
           const pt = p.points[0];
-          const hit = intersectSegmentCapsule(pt.x, pt.y, pt.x, pt.y, pos1.x, pos1.y, pos2.x, pos2.y, radius);
+          const hit = intersectSegmentCapsule(pt.x, pt.y, pt.x, pt.y, pos1.x, pos1.y, pos2.x, pos2.y, effectiveRadius);
           if (hit) {
             changed = true;
           } else {
@@ -3317,9 +3861,10 @@
         }
 
         let currentSegment = [];
+        let segStartCut = !!p.noStartTaper;
         let pathModified = false;
 
-        const flushSegment = () => {
+        const flushSegment = (endCut) => {
           if (currentSegment.length > 0) {
             newPaths.push({
               type: p.type,
@@ -3327,6 +3872,8 @@
               size: p.size,
               opacity: p.opacity,
               rotation: 0,
+              noStartTaper: segStartCut,
+              noEndTaper: endCut,
               points: currentSegment
             });
             currentSegment = [];
@@ -3336,7 +3883,7 @@
         for (let i = 0; i < p.points.length - 1; i++) {
           const a = p.points[i];
           const b = p.points[i + 1];
-          const hit = intersectSegmentCapsule(a.x, a.y, b.x, b.y, pos1.x, pos1.y, pos2.x, pos2.y, radius);
+          const hit = intersectSegmentCapsule(a.x, a.y, b.x, b.y, pos1.x, pos1.y, pos2.x, pos2.y, effectiveRadius);
 
           if (!hit) {
             pushPointDedup(currentSegment, { x: a.x, y: a.y, t: a.t, p: a.p });
@@ -3349,7 +3896,8 @@
               pushPointDedup(currentSegment, { x: a.x, y: a.y, t: a.t, p: a.p });
               pushPointDedup(currentSegment, interpolateStrokePoint(a, b, tEnter));
             }
-            flushSegment();
+            flushSegment(true);
+            segStartCut = true;
             if (tExit < 1 - 1e-4) {
               pushPointDedup(currentSegment, interpolateStrokePoint(a, b, tExit));
               pushPointDedup(currentSegment, { x: b.x, y: b.y, t: b.t, p: b.p });
@@ -3360,7 +3908,7 @@
         if (!pathModified) {
           newPaths.push(p);
         } else {
-          flushSegment();
+          flushSegment(!!p.noEndTaper);
         }
       }
 
@@ -3372,13 +3920,26 @@
     }
 
     function eraseObjectAt(pos) {
-      const radius = Math.max(20 / viewScale, parseInt(sizeRange.value) * 1.5);
+      const baseRadius = Math.max(20 / viewScale, parseInt(sizeRange.value) * 1.5);
       let changed = false;
       const pCount = paths.length;
-      paths = paths.filter(p => !p.points.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) <= radius));
+      paths = paths.filter(p => {
+        if (p.rotation) bakePathRotation(p);
+        const strokeHalfW = (p.type === 'highlighter' ? p.size * 2.5 : p.size) * 0.5;
+        const threshold = baseRadius + strokeHalfW * 0.5;
+        if (p.points.length === 1) {
+          return Math.hypot(p.points[0].x - pos.x, p.points[0].y - pos.y) > threshold;
+        }
+        for (let j = 0; j < p.points.length - 1; j++) {
+          if (distToSegment(pos.x, pos.y, p.points[j].x, p.points[j].y, p.points[j + 1].x, p.points[j + 1].y) <= threshold) {
+            return false;
+          }
+        }
+        return true;
+      });
       if (paths.length !== pCount) changed = true;
       const imgCount = images.length;
-      images = images.filter(img => !(pos.x >= img.x && pos.x <= img.x + img.w && pos.y >= img.y && pos.y <= img.y + img.h));
+      images = images.filter(img => !isPointInRotatedRect(pos.x, pos.y, img, 0));
       if (images.length !== imgCount) changed = true;
       if (changed) { pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images; scheduleRedraw(); }
     }
@@ -3487,7 +4048,18 @@
     }
 
     saveBtn.addEventListener('click', () => saveDrawingFile());
-    window.addEventListener('beforeunload', () => saveProgress());
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden' && !isLoggingOut) {
+        saveProgress();
+      }
+    });
+    window.addEventListener('pagehide', () => {
+      if (!isLoggingOut) saveProgress();
+    });
+    window.addEventListener('beforeunload', () => {
+      if (!isLoggingOut) saveProgress();
+    });
   </script>
 </body>
 </html>
