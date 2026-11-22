@@ -1060,9 +1060,9 @@
     }
 
     logoutBtn.addEventListener('click', () => {
-      if (confirm("確定要登出數位白板系統嗎？（登出時將自動清除本機暫存畫布資料以確保隱私）")) {
+      if (confirm("確定要登出數位白板系統嗎？（登出後會保留本次繪畫內容，下次登入可繼續作畫）")) {
         commitInlineTextEditor(false);
-        isLoggingOut = true;
+        saveProgress();
         clearTimeout(saveDebounceTimer);
         playShutdownSound();
         scanOverlay.style.display = 'flex';
@@ -1076,7 +1076,7 @@
           { p: 15, text: "正在掃描系統核心記憶體區塊..." },
           { p: 35, text: "正在檢測連線埠與網路流量封包..." },
           { p: 60, text: "正在掃描外接裝置與快取檔案..." },
-          { p: 85, text: "清除暫存數據與安全憑證...", action: clearStoredWhiteboardData },
+          { p: 85, text: "正在保存畫布內容與繪圖設定..." },
           { p: 100, text: "系統安全，準備登出。" }
         ];
 
@@ -1090,7 +1090,10 @@
           } else {
             clearInterval(interval);
             status.textContent = "檢查完成！環境安全。";
-            setTimeout(() => { window.location.reload(); }, 600);
+            setTimeout(() => {
+              isLoggingOut = true;
+              window.location.reload();
+            }, 600);
           }
         }, 500);
       }
