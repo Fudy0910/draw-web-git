@@ -38,7 +38,7 @@
       touch-action: none;
     }
 
-    input[type="text"], input[type="password"] {
+    input[type="text"], input[type="password"], textarea {
       -webkit-user-select: text;
       user-select: text;
       touch-action: auto;
@@ -273,11 +273,11 @@
 
     .width-section { display: flex; flex-direction: column; gap: 10px; padding: 4px; }
     .size-presets { display: flex; justify-content: space-between; gap: 6px; }
-    .size-preset-btn { flex: 1; height: 42px; background: #3a4146; border: 1px solid #555; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .size-preset-btn { flex: 1; height: 42px; background: #3a4146; border: 1px solid #555; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; font-weight: bold; }
     .size-preset-btn.active { border-color: #007bff; background: #007bff; }
     .slider-row { display: flex; align-items: center; background: #3a4146; padding: 8px 10px; border-radius: 20px; justify-content: space-between; gap: 6px; }
     .slider-row input[type="range"] { flex: 1; min-width: 80px; cursor: pointer; }
-    .preview-box { height: 52px; background: #333; border: 1px solid #555; display: flex; align-items: center; justify-content: center; border-radius: 6px; }
+    .preview-box { height: 52px; background: #333; border: 1px solid #555; display: flex; align-items: center; justify-content: center; border-radius: 6px; overflow: hidden; }
 
     .sub-menu {
       display: none;
@@ -301,10 +301,148 @@
     canvas.brush-cursor { cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="%23333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>') 0 24, crosshair; }
     canvas.eraser-cursor { cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="%23ddd" stroke="%23333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16C2 15 2 13 3 12L13 2l9 9-9 9z"/><path d="M6 11l6 6"/></svg>') 2 24, auto; }
     canvas.select-cursor { cursor: default; }
+    canvas.text-cursor { cursor: text; }
     canvas.zoom-in-cursor { cursor: zoom-in; }
     canvas.zoom-out-cursor { cursor: zoom-out; }
     canvas.pan-grab-cursor { cursor: grab; }
     canvas.pan-grabbing-cursor { cursor: grabbing; }
+
+    /* 文字工具浮動控制列 */
+    #textFloatingBar {
+      display: none;
+      position: absolute;
+      top: calc(12px + env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 550;
+      background: rgba(43, 49, 55, 0.95);
+      border: 1px solid #4e565e;
+      border-radius: 12px;
+      padding: 6px 10px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.32);
+      color: #ffffff;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-width: calc(100% - 24px);
+    }
+    #textFloatingBar.show {
+      display: flex;
+    }
+    .text-bar-badge {
+      background: #007bff;
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+    .text-bar-group {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .text-bar-divider {
+      width: 1px;
+      height: 22px;
+      background: #555e67;
+    }
+    .text-swatch-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      cursor: pointer;
+      padding: 0;
+      flex-shrink: 0;
+      transition: transform 0.1s ease, border-color 0.1s ease;
+    }
+    .text-swatch-btn:hover {
+      transform: scale(1.12);
+    }
+    .text-swatch-btn.active {
+      border-color: #ffc107;
+      box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.5);
+      transform: scale(1.12);
+    }
+    #textCustomColorInput {
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: 1px solid #777;
+      border-radius: 6px;
+      background: transparent;
+      cursor: pointer;
+      touch-action: auto;
+    }
+    .text-size-step-btn {
+      width: 26px;
+      height: 26px;
+      border: 1px solid #5c656e;
+      background: #3a4146;
+      color: #fff;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .text-size-step-btn:active {
+      background: #007bff;
+    }
+    #textBarSizeRange {
+      width: 84px;
+      cursor: pointer;
+    }
+    #textBarSizeVal {
+      font-size: 12px;
+      font-weight: 700;
+      color: #ffc107;
+      min-width: 38px;
+      text-align: center;
+    }
+    #textConfirmBtn {
+      display: none;
+      background: #28a745;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #textConfirmBtn.show {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* 畫布內嵌文字輸入框 */
+    #inlineTextEditor {
+      position: absolute;
+      display: none;
+      z-index: 500;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1.5px dashed #007bff;
+      border-radius: 4px;
+      outline: none;
+      resize: none;
+      overflow: hidden;
+      padding: 2px 4px;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.3;
+      white-space: pre;
+      transform-origin: center center;
+      box-shadow: 0 2px 10px rgba(0, 123, 255, 0.2);
+      min-width: 24px;
+    }
 
     #zoomBadgeWrapper {
       position: absolute;
@@ -487,6 +625,32 @@
   <div class="canvas-container" id="canvasContainer">
     <canvas id="paintCanvas" class="brush-cursor"></canvas>
 
+    <!-- 文字設定浮動工具列 -->
+    <div id="textFloatingBar">
+      <span class="text-bar-badge">T 文字</span>
+      <div class="text-bar-group" id="textQuickColors">
+        <button type="button" class="text-swatch-btn active" style="background:#000000;" data-color="#000000" title="黑色"></button>
+        <button type="button" class="text-swatch-btn" style="background:#ff0000;" data-color="#ff0000" title="紅色"></button>
+        <button type="button" class="text-swatch-btn" style="background:#007bff;" data-color="#007bff" title="藍色"></button>
+        <button type="button" class="text-swatch-btn" style="background:#00cc00;" data-color="#00cc00" title="綠色"></button>
+        <button type="button" class="text-swatch-btn" style="background:#ff6600;" data-color="#ff6600" title="橘色"></button>
+        <button type="button" class="text-swatch-btn" style="background:#9900cc;" data-color="#9900cc" title="紫色"></button>
+        <button type="button" class="text-swatch-btn" style="background:#ffffff;" data-color="#ffffff" title="白色"></button>
+        <input type="color" id="textCustomColorInput" value="#000000" title="自訂文字顏色">
+      </div>
+      <div class="text-bar-divider"></div>
+      <div class="text-bar-group">
+        <button type="button" class="text-size-step-btn" id="textSizeDecBtn" title="縮小字體">−</button>
+        <input type="range" id="textBarSizeRange" min="12" max="120" value="32" title="字體大小">
+        <span id="textBarSizeVal">32px</span>
+        <button type="button" class="text-size-step-btn" id="textSizeIncBtn" title="放大字體">＋</button>
+      </div>
+      <button type="button" id="textConfirmBtn">✓ 完成</button>
+    </div>
+
+    <!-- 畫布內嵌多行文字輸入框 -->
+    <textarea id="inlineTextEditor" rows="1" spellcheck="false" placeholder="輸入文字..."></textarea>
+
     <div id="zoomBadgeWrapper">
       <div id="zoomPresetMenu"></div>
       <button id="zoomBadge" title="點擊選擇放大比例">
@@ -568,6 +732,15 @@
       </div>
     </div>
 
+    <!-- 文字輸入工具 T -->
+    <button id="textToolBtn" title="輸入文字">
+      <svg class="icon" viewBox="0 0 24 24">
+        <polyline points="4 7 4 4 20 4 20 7"></polyline>
+        <line x1="9" y1="20" x2="15" y2="20"></line>
+        <line x1="12" y1="4" x2="12" y2="20"></line>
+      </svg>
+    </button>
+
     <div class="dropdown-container" id="colorDropdownContainer">
       <button id="colorBtn">
         <svg class="icon" viewBox="0 0 24 24">
@@ -581,7 +754,7 @@
       <div class="advanced-panel" id="advancedPanel">
         <div class="panel-header">
           <button class="panel-tab active" data-tab="colorTab">顏色</button>
-          <button class="panel-tab" data-tab="widthTab">寬度</button>
+          <button class="panel-tab" data-tab="widthTab" id="widthTabBtn">寬度</button>
           <button class="panel-close" id="panelCloseBtn">✕</button>
         </div>
 
@@ -615,15 +788,15 @@
         <div class="tab-content" id="widthTab">
           <div class="width-section">
             <div style="font-size: 12px; color: #aaa; margin-bottom: 2px;" id="sizeLabelTitle">筆大小調整</div>
-            <div class="size-presets">
+            <div class="size-presets" id="sizePresetsContainer">
               <div class="size-preset-btn" data-size="3"><span style="width:4px;height:4px;background:white;border-radius:50%;"></span></div>
               <div class="size-preset-btn" data-size="8"><span style="width:10px;height:10px;background:white;border-radius:50%;"></span></div>
               <div class="size-preset-btn" data-size="20"><span style="width:18px;height:18px;background:white;border-radius:50%;"></span></div>
             </div>
             <div class="slider-row">
-              <span style="font-size:11px;">細</span>
+              <span style="font-size:11px;" id="sizeMinLabel">細</span>
               <input type="range" id="sizeRange" min="1" max="50" value="8">
-              <span style="font-size:11px;">粗</span>
+              <span style="font-size:11px;" id="sizeMaxLabel">粗</span>
             </div>
             <div class="preview-box">
               <div id="sizePreviewDot" style="width:8px; height:8px; background:white; border-radius:50%;"></div>
@@ -888,6 +1061,7 @@
 
     logoutBtn.addEventListener('click', () => {
       if (confirm("確定要登出數位白板系統嗎？（登出時將自動清除本機暫存畫布資料以確保隱私）")) {
+        commitInlineTextEditor(false);
         isLoggingOut = true;
         clearTimeout(saveDebounceTimer);
         playShutdownSound();
@@ -940,9 +1114,20 @@
     const eraserDropdown = document.getElementById('eraserDropdown');
     const eraserMenuBtn = document.getElementById('eraserMenuBtn');
     const eraserSubMenu = document.getElementById('eraserSubMenu');
+    const textToolBtn = document.getElementById('textToolBtn');
     const zoomDropdown = document.getElementById('zoomDropdown');
     const zoomMenuBtn = document.getElementById('zoomMenuBtn');
     const zoomSubMenu = document.getElementById('zoomSubMenu');
+
+    const textFloatingBar = document.getElementById('textFloatingBar');
+    const textQuickColors = document.getElementById('textQuickColors');
+    const textCustomColorInput = document.getElementById('textCustomColorInput');
+    const textSizeDecBtn = document.getElementById('textSizeDecBtn');
+    const textBarSizeRange = document.getElementById('textBarSizeRange');
+    const textBarSizeVal = document.getElementById('textBarSizeVal');
+    const textSizeIncBtn = document.getElementById('textSizeIncBtn');
+    const textConfirmBtn = document.getElementById('textConfirmBtn');
+    const inlineTextEditor = document.getElementById('inlineTextEditor');
     
     const colorBtn = document.getElementById('colorBtn');
     const advancedPanel = document.getElementById('advancedPanel');
@@ -950,14 +1135,16 @@
     const panelTabs = document.querySelectorAll('.panel-tab');
     const tabContents = document.querySelectorAll('.tab-content');
     const colorTabBtn = document.querySelector('.panel-tab[data-tab="colorTab"]');
-    const widthTabBtn = document.querySelector('.panel-tab[data-tab="widthTab"]');
+    const widthTabBtn = document.getElementById('widthTabBtn');
     const colorTabContent = document.getElementById('colorTab');
     const widthTabContent = document.getElementById('widthTab');
     
     const sizeRange = document.getElementById('sizeRange');
     const sizeLabelTitle = document.getElementById('sizeLabelTitle');
+    const sizePresetsContainer = document.getElementById('sizePresetsContainer');
+    const sizeMinLabel = document.getElementById('sizeMinLabel');
+    const sizeMaxLabel = document.getElementById('sizeMaxLabel');
     const sizePreviewDot = document.getElementById('sizePreviewDot');
-    const sizePresetBtns = document.querySelectorAll('.size-preset-btn');
 
     const undoBtn = document.getElementById('undoBtn');
     const redoBtn = document.getElementById('redoBtn');
@@ -993,6 +1180,9 @@
       550, 600, 650, 700, 750, 800, 850, 900, 950, 10000
     ];
 
+    const TEXT_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    const TEXT_LINE_HEIGHT_RATIO = 1.3;
+
     let isDrawing = false;
     let activePointerId = null;
     let currentTool = 'pen';
@@ -1002,6 +1192,8 @@
     let currentColor = '#000000';
     let penSize = 8;
     let eraserSize = 20;
+    let textColor = '#000000';
+    let textFontSize = 32;
     let activeTouchEraserPos = null;
 
     let viewScale = 1.0;
@@ -1021,23 +1213,32 @@
     let prevTwoFingerMidX = 0;
     let prevTwoFingerMidY = 0;
 
-    let pages = [{ paths: [], images: [], undoStack: [], redoStack: [], viewScale: 1.0, viewOffsetX: 0, viewOffsetY: 0 }];
+    let pages = [{ paths: [], images: [], texts: [], undoStack: [], redoStack: [], viewScale: 1.0, viewOffsetX: 0, viewOffsetY: 0 }];
     let currentPageIndex = 0;
     let paths = pages[0].paths;
     let images = pages[0].images;
+    let texts = pages[0].texts;
     let currentPath = null;
     let lassoPoints = [];
+
+    // 內嵌文字編輯狀態
+    let isEditingText = false;
+    let editingTextObj = null;
+    let editingWorldPos = { x: 0, y: 0 };
+    let textEditBeforeSnapshot = null;
+    let selectedTextStyleSnapshot = null;
 
     let selectionBox = null;
     let isSelecting = false;
     let selectStartX = 0, selectStartY = 0;
     let selectedPaths = [];
     let selectedImages = [];
+    let selectedTexts = [];
     let interactionState = null;
     let dragStartX = 0, dragStartY = 0;
     let groupBounds = null;
     let origGroupBounds = null;
-    let clipboard = { paths: [], images: [] };
+    let clipboard = { paths: [], images: [], texts: [] };
 
     let isSnipping = false;
     let snipStartX = 0, snipStartY = 0, snipEndX = 0, snipEndY = 0;
@@ -1051,6 +1252,299 @@
     let menuOpenPos = { x: 100, y: 100 };
     let sparkleAnimFrame = null;
     let redrawPending = false;
+    let lastCanvasTapTime = 0;
+    let lastCanvasTapWorld = { x: 0, y: 0 };
+
+    function measureTextObject(tObj) {
+      const fontSize = tObj.fontSize || 32;
+      const lineHeight = fontSize * TEXT_LINE_HEIGHT_RATIO;
+      const lines = (tObj.text || '').split('\n');
+      ctx.save();
+      ctx.font = `${fontSize}px ${TEXT_FONT_FAMILY}`;
+      let maxW = 0;
+      for (let i = 0; i < lines.length; i++) {
+        const w = ctx.measureText(lines[i]).width;
+        if (w > maxW) maxW = w;
+      }
+      ctx.restore();
+      tObj.w = Math.max(20, maxW + 10);
+      tObj.h = Math.max(lineHeight + 4, lines.length * lineHeight + 4);
+      return { w: tObj.w, h: tObj.h };
+    }
+
+    function updateTextFloatingBarVisibility() {
+      const shouldShow = (currentTool === 'text') || isEditingText || (currentTool === 'select' && selectedTexts.length > 0);
+      textFloatingBar.classList.toggle('show', shouldShow);
+      textConfirmBtn.classList.toggle('show', isEditingText);
+
+      let activeCol = textColor;
+      let activeSz = textFontSize;
+      if (isEditingText) {
+        activeCol = editingTextObj ? editingTextObj.color : textColor;
+        activeSz = editingTextObj ? editingTextObj.fontSize : textFontSize;
+      } else if (currentTool === 'select' && selectedTexts.length > 0) {
+        activeCol = selectedTexts[0].color || textColor;
+        activeSz = Math.round(selectedTexts[0].fontSize || textFontSize);
+      }
+
+      textBarSizeRange.value = Math.min(120, Math.max(12, Math.round(activeSz)));
+      textBarSizeVal.textContent = Math.round(activeSz) + 'px';
+      if (/^#[0-9a-fA-F]{6}$/.test(activeCol)) {
+        textCustomColorInput.value = activeCol;
+      }
+      textQuickColors.querySelectorAll('.text-swatch-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.color.toLowerCase() === activeCol.toLowerCase());
+      });
+    }
+
+    function applyTextColorChange(newColor, recordUndoForSelection = true) {
+      textColor = newColor;
+      currentColor = newColor;
+
+      if (isEditingText) {
+        inlineTextEditor.style.color = newColor;
+        if (editingTextObj) editingTextObj.color = newColor;
+      } else if (currentTool === 'select' && selectedTexts.length > 0) {
+        if (recordUndoForSelection) recordUndoStep();
+        selectedTexts.forEach(t => { t.color = newColor; });
+        pages[currentPageIndex].texts = texts;
+        redraw();
+        saveProgress();
+      }
+      updateTextFloatingBarVisibility();
+    }
+
+    function applyTextFontSizeChange(newSize, recordUndoForSelection = true) {
+      const clamped = Math.min(120, Math.max(12, Math.round(newSize)));
+      textFontSize = clamped;
+
+      if (isEditingText) {
+        if (editingTextObj) editingTextObj.fontSize = clamped;
+        updateInlineEditorGeometry();
+      } else if (currentTool === 'select' && selectedTexts.length > 0) {
+        if (recordUndoForSelection) recordUndoStep();
+        selectedTexts.forEach(t => {
+          t.fontSize = clamped;
+          measureTextObject(t);
+        });
+        updateGroupBounds();
+        pages[currentPageIndex].texts = texts;
+        redraw();
+        saveProgress();
+      }
+
+      if (currentTool === 'text') {
+        sizeRange.value = clamped;
+        updateSizeUI(clamped);
+      }
+      updateTextFloatingBarVisibility();
+    }
+
+    function updateInlineEditorGeometry() {
+      if (!isEditingText) return;
+      const fontSize = editingTextObj ? editingTextObj.fontSize : textFontSize;
+      const color = editingTextObj ? editingTextObj.color : textColor;
+      const rotation = editingTextObj ? (editingTextObj.rotation || 0) : 0;
+
+      const screenX = viewOffsetX + editingWorldPos.x * viewScale;
+      const screenY = viewOffsetY + editingWorldPos.y * viewScale;
+      const screenFontSize = Math.max(8, fontSize * viewScale);
+
+      inlineTextEditor.style.left = screenX + 'px';
+      inlineTextEditor.style.top = screenY + 'px';
+      inlineTextEditor.style.fontSize = screenFontSize + 'px';
+      inlineTextEditor.style.lineHeight = String(TEXT_LINE_HEIGHT_RATIO);
+      inlineTextEditor.style.color = color;
+      inlineTextEditor.style.padding = `${2 * viewScale}px ${4 * viewScale}px`;
+      inlineTextEditor.style.transform = rotation ? `rotate(${rotation}rad)` : 'none';
+
+      // 依內容自動調整寬高，避免出現捲軸
+      const lines = (inlineTextEditor.value || ' ').split('\n');
+      ctx.save();
+      ctx.font = `${fontSize}px ${TEXT_FONT_FAMILY}`;
+      let maxW = 0;
+      for (let i = 0; i < lines.length; i++) {
+        const w = ctx.measureText(lines[i] || ' ').width;
+        if (w > maxW) maxW = w;
+      }
+      ctx.restore();
+
+      const worldW = Math.max(60, maxW + 18);
+      const worldH = Math.max(fontSize * TEXT_LINE_HEIGHT_RATIO + 6, lines.length * fontSize * TEXT_LINE_HEIGHT_RATIO + 6);
+      inlineTextEditor.style.width = Math.ceil(worldW * viewScale) + 'px';
+      inlineTextEditor.style.height = Math.ceil(worldH * viewScale) + 'px';
+    }
+
+    function openInlineTextEditor(worldX, worldY, existingTextObj = null) {
+      if (isEditingText) {
+        commitInlineTextEditor(false);
+      }
+
+      textEditBeforeSnapshot = capturePageState();
+      isEditingText = true;
+      editingTextObj = existingTextObj;
+
+      if (existingTextObj) {
+        editingWorldPos = { x: existingTextObj.x, y: existingTextObj.y };
+        textColor = existingTextObj.color || '#000000';
+        textFontSize = Math.round(existingTextObj.fontSize || 32);
+        inlineTextEditor.value = existingTextObj.text || '';
+      } else {
+        editingWorldPos = { x: worldX, y: worldY };
+        inlineTextEditor.value = '';
+      }
+
+      inlineTextEditor.style.display = 'block';
+      updateInlineEditorGeometry();
+      updateTextFloatingBarVisibility();
+      redraw();
+
+      setTimeout(() => {
+        inlineTextEditor.focus();
+        const len = inlineTextEditor.value.length;
+        inlineTextEditor.setSelectionRange(len, len);
+      }, 10);
+    }
+
+    function commitInlineTextEditor(selectAfterCommit = false) {
+      if (!isEditingText) return;
+      const rawText = inlineTextEditor.value;
+      const hasContent = rawText.trim().length > 0;
+
+      if (editingTextObj) {
+        if (hasContent) {
+          editingTextObj.text = rawText;
+          editingTextObj.color = textColor;
+          editingTextObj.fontSize = textFontSize;
+          measureTextObject(editingTextObj);
+        } else {
+          // 若編輯既有文字並全部清空，則移除該文字物件
+          texts = texts.filter(t => t !== editingTextObj);
+          pages[currentPageIndex].texts = texts;
+        }
+      } else if (hasContent) {
+        const newTextObj = {
+          text: rawText,
+          x: editingWorldPos.x,
+          y: editingWorldPos.y,
+          fontSize: textFontSize,
+          color: textColor,
+          opacity: 1.0,
+          rotation: 0
+        };
+        measureTextObject(newTextObj);
+        texts.push(newTextObj);
+        pages[currentPageIndex].texts = texts;
+        if (selectAfterCommit) {
+          selectedTexts = [newTextObj];
+          selectedPaths = [];
+          selectedImages = [];
+        }
+      }
+
+      if (textEditBeforeSnapshot && !isSamePageState(textEditBeforeSnapshot, capturePageState())) {
+        pushHistorySnapshot(textEditBeforeSnapshot);
+      }
+      textEditBeforeSnapshot = null;
+
+      isEditingText = false;
+      editingTextObj = null;
+      inlineTextEditor.style.display = 'none';
+      inlineTextEditor.value = '';
+
+      if (selectAfterCommit && selectedTexts.length > 0) {
+        updateGroupBounds();
+        prepareTransformBackup();
+      }
+      updateTextFloatingBarVisibility();
+      redraw();
+      saveProgress();
+    }
+
+    inlineTextEditor.addEventListener('input', () => {
+      updateInlineEditorGeometry();
+    });
+
+    inlineTextEditor.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+    });
+
+    inlineTextEditor.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Escape' || ((e.ctrlKey || e.metaKey) && e.key === 'Enter')) {
+        e.preventDefault();
+        commitInlineTextEditor(false);
+      }
+    });
+
+    textFloatingBar.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+    });
+
+    textQuickColors.querySelectorAll('.text-swatch-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        applyTextColorChange(btn.dataset.color, true);
+        if (isEditingText) inlineTextEditor.focus();
+      });
+    });
+
+    textCustomColorInput.addEventListener('input', (e) => {
+      e.stopPropagation();
+      if (currentTool === 'select' && selectedTexts.length > 0 && !selectedTextStyleSnapshot) {
+        selectedTextStyleSnapshot = capturePageState();
+      }
+      applyTextColorChange(e.target.value, false);
+    });
+
+    textCustomColorInput.addEventListener('change', () => {
+      if (selectedTextStyleSnapshot && !isSamePageState(selectedTextStyleSnapshot, capturePageState())) {
+        pushHistorySnapshot(selectedTextStyleSnapshot);
+      }
+      selectedTextStyleSnapshot = null;
+      if (isEditingText) inlineTextEditor.focus();
+    });
+
+    textBarSizeRange.addEventListener('pointerdown', () => {
+      if (currentTool === 'select' && selectedTexts.length > 0) {
+        selectedTextStyleSnapshot = capturePageState();
+      }
+    });
+
+    textBarSizeRange.addEventListener('input', (e) => {
+      e.stopPropagation();
+      if (currentTool === 'select' && selectedTexts.length > 0 && !selectedTextStyleSnapshot) {
+        selectedTextStyleSnapshot = capturePageState();
+      }
+      applyTextFontSizeChange(parseInt(e.target.value, 10), false);
+    });
+
+    textBarSizeRange.addEventListener('change', () => {
+      if (selectedTextStyleSnapshot && !isSamePageState(selectedTextStyleSnapshot, capturePageState())) {
+        pushHistorySnapshot(selectedTextStyleSnapshot);
+      }
+      selectedTextStyleSnapshot = null;
+      if (isEditingText) inlineTextEditor.focus();
+    });
+
+    textSizeDecBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cur = isEditingText ? textFontSize : (selectedTexts[0]?.fontSize || textFontSize);
+      applyTextFontSizeChange(cur - 4, true);
+      if (isEditingText) inlineTextEditor.focus();
+    });
+
+    textSizeIncBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cur = isEditingText ? textFontSize : (selectedTexts[0]?.fontSize || textFontSize);
+      applyTextFontSizeChange(cur + 4, true);
+      if (isEditingText) inlineTextEditor.focus();
+    });
+
+    textConfirmBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      commitInlineTextEditor(false);
+    });
 
     function buildZoomPresetMenu() {
       zoomPresetMenu.innerHTML = '';
@@ -1100,7 +1594,7 @@
       const cw = canvas.parentElement.clientWidth || window.innerWidth;
       const ch = canvas.parentElement.clientHeight || window.innerHeight;
 
-      if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0)) {
+      if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0 || selectedTexts.length > 0)) {
         const focusX = groupBounds.x + groupBounds.w / 2;
         const focusY = groupBounds.y + groupBounds.h / 2;
         viewScale = targetScale;
@@ -1139,6 +1633,7 @@
         pages[currentPageIndex].viewOffsetY = viewOffsetY;
       }
       updateZoomBadge();
+      if (isEditingText) updateInlineEditorGeometry();
     }
 
     function restoreDefaultCursorForCurrentTool() {
@@ -1149,6 +1644,8 @@
       }
       if (currentTool === 'select') {
         canvas.className = 'select-cursor';
+      } else if (currentTool === 'text') {
+        canvas.className = 'text-cursor';
       } else if (currentTool === 'zoom') {
         canvas.className = zoomMode === 'in' ? 'zoom-in-cursor' : 'zoom-out-cursor';
       } else if (currentTool === 'eraser') {
@@ -1201,13 +1698,28 @@
           src: img.src,
           opacity: img.opacity !== undefined ? img.opacity : 1.0,
           rotation: img.rotation || 0
+        })),
+        texts: (targetPage.texts || []).map(t => ({
+          text: t.text,
+          x: t.x,
+          y: t.y,
+          w: t.w,
+          h: t.h,
+          fontSize: t.fontSize,
+          color: t.color,
+          opacity: t.opacity !== undefined ? t.opacity : 1.0,
+          rotation: t.rotation || 0
         }))
       };
     }
 
     function isSamePageState(s1, s2) {
       if (!s1 || !s2) return false;
-      if (s1.paths.length !== s2.paths.length || s1.images.length !== s2.images.length) return false;
+      if (
+        s1.paths.length !== s2.paths.length ||
+        s1.images.length !== s2.images.length ||
+        (s1.texts || []).length !== (s2.texts || []).length
+      ) return false;
       return JSON.stringify(s1) === JSON.stringify(s2);
     }
 
@@ -1243,9 +1755,26 @@
         };
       });
 
+      targetPage.texts = (snapshot.texts || []).map(tItem => {
+        const tObj = {
+          text: tItem.text,
+          x: tItem.x,
+          y: tItem.y,
+          w: tItem.w,
+          h: tItem.h,
+          fontSize: tItem.fontSize || 32,
+          color: tItem.color || '#000000',
+          opacity: tItem.opacity !== undefined ? tItem.opacity : 1.0,
+          rotation: tItem.rotation || 0
+        };
+        measureTextObject(tObj);
+        return tObj;
+      });
+
       if (pageIdx === currentPageIndex) {
         paths = targetPage.paths;
         images = targetPage.images;
+        texts = targetPage.texts;
       }
     }
 
@@ -1278,6 +1807,7 @@
     function resetSelectionState() {
       selectedPaths = [];
       selectedImages = [];
+      selectedTexts = [];
       groupBounds = null;
       origGroupBounds = null;
       selectionBox = null;
@@ -1287,9 +1817,11 @@
       objectMenu.classList.remove('show');
       opacitySubPanel.classList.remove('show');
       canvasMenu.style.display = 'none';
+      updateTextFloatingBarVisibility();
     }
 
     function undoAction() {
+      commitInlineTextEditor(false);
       const page = pages[currentPageIndex];
       if (!page || !page.undoStack || page.undoStack.length === 0) return;
 
@@ -1305,6 +1837,7 @@
     }
 
     function redoAction() {
+      commitInlineTextEditor(false);
       const page = pages[currentPageIndex];
       if (!page || !page.redoStack || page.redoStack.length === 0) return;
 
@@ -1378,6 +1911,17 @@
         syncPageViewState();
         const serializedPages = pages.map(page => ({
           paths: page.paths,
+          texts: (page.texts || []).map(t => ({
+            text: t.text,
+            x: t.x,
+            y: t.y,
+            w: t.w,
+            h: t.h,
+            fontSize: t.fontSize,
+            color: t.color,
+            opacity: t.opacity !== undefined ? t.opacity : 1.0,
+            rotation: t.rotation || 0
+          })),
           viewScale: page.viewScale !== undefined ? page.viewScale : 1.0,
           viewOffsetX: page.viewOffsetX !== undefined ? page.viewOffsetX : 0,
           viewOffsetY: page.viewOffsetY !== undefined ? page.viewOffsetY : 0,
@@ -1390,7 +1934,7 @@
         }));
 
         const payload = {
-          version: 2,
+          version: 3,
           currentPageIndex: currentPageIndex,
           pages: serializedPages
         };
@@ -1462,9 +2006,25 @@
             if (copy.rotation) bakePathRotation(copy);
             return copy;
           });
+          const restoredTexts = (p.texts || []).map(tObj => {
+            const copy = {
+              text: tObj.text || '',
+              x: tObj.x || 0,
+              y: tObj.y || 0,
+              w: tObj.w || 40,
+              h: tObj.h || 40,
+              fontSize: tObj.fontSize || 32,
+              color: tObj.color || '#000000',
+              opacity: tObj.opacity !== undefined ? tObj.opacity : 1.0,
+              rotation: tObj.rotation || 0
+            };
+            measureTextObject(copy);
+            return copy;
+          });
           return {
             paths: restoredPaths,
             images: [],
+            texts: restoredTexts,
             undoStack: [],
             redoStack: [],
             viewScale: p.viewScale !== undefined ? p.viewScale : 1.0,
@@ -1511,11 +2071,17 @@
     }
 
     window.addEventListener('resize', () => {
-      if (loginOverlay.style.display === 'none' && bootScreen.style.display === 'none') initCanvas();
+      if (loginOverlay.style.display === 'none' && bootScreen.style.display === 'none') {
+        initCanvas();
+        if (isEditingText) updateInlineEditorGeometry();
+      }
     });
     window.addEventListener('orientationchange', () => {
       setTimeout(() => {
-        if (loginOverlay.style.display === 'none' && bootScreen.style.display === 'none') initCanvas();
+        if (loginOverlay.style.display === 'none' && bootScreen.style.display === 'none') {
+          initCanvas();
+          if (isEditingText) updateInlineEditorGeometry();
+        }
       }, 250);
     });
 
@@ -1534,7 +2100,7 @@
     function restoreOriginalZoomScale() {
       const cw = canvas.parentElement.clientWidth || window.innerWidth;
       const ch = canvas.parentElement.clientHeight || window.innerHeight;
-      if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0)) {
+      if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0 || selectedTexts.length > 0)) {
         const focusX = groupBounds.x + groupBounds.w / 2;
         const focusY = groupBounds.y + groupBounds.h / 2;
         viewScale = 1.0;
@@ -1551,32 +2117,38 @@
 
     function switchPage(index) {
       if (index < 0 || index >= pages.length) return;
+      commitInlineTextEditor(false);
       syncPageViewState();
       currentPageIndex = index;
       const page = pages[currentPageIndex];
       if (!page.undoStack) page.undoStack = [];
       if (!page.redoStack) page.redoStack = [];
+      if (!page.texts) page.texts = [];
       paths = page.paths;
       images = page.images;
+      texts = page.texts;
       viewScale = page.viewScale !== undefined ? page.viewScale : 1.0;
       viewOffsetX = page.viewOffsetX !== undefined ? page.viewOffsetX : 0;
       viewOffsetY = page.viewOffsetY !== undefined ? page.viewOffsetY : 0;
       syncPageViewState();
-      selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null;
+      selectedPaths = []; selectedImages = []; selectedTexts = []; groupBounds = null; origGroupBounds = null;
       opacitySubPanel.classList.remove('show');
       if (currentTool === 'eraser') updateEraserCursor();
       updatePageIndicator();
       updateUndoRedoButtons();
+      updateTextFloatingBarVisibility();
       redraw();
     }
 
     newPageBtn.addEventListener('click', () => {
-      pages.push({ paths: [], images: [], undoStack: [], redoStack: [], viewScale: 1.0, viewOffsetX: 0, viewOffsetY: 0 });
+      commitInlineTextEditor(false);
+      pages.push({ paths: [], images: [], texts: [], undoStack: [], redoStack: [], viewScale: 1.0, viewOffsetX: 0, viewOffsetY: 0 });
       switchPage(pages.length - 1);
       saveProgress();
     });
 
     deletePageBtn.addEventListener('click', () => {
+      commitInlineTextEditor(false);
       if (pages.length <= 1) {
         if (confirm("目前只有 1 頁，是否要直接清空本頁內容？")) clearBtn.click();
         return;
@@ -1692,13 +2264,14 @@
         alert("PDF 解析模組尚未載入完成，請確認網路連線後再試一次。");
         return;
       }
+      commitInlineTextEditor(false);
       showLoadingToast(`正在解析 PDF：${file.name}...`);
       try {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const totalPages = pdf.numPages;
         const startPageIdx = currentPageIndex;
-        const isStartPageEmpty = pages[startPageIdx].paths.length === 0 && pages[startPageIdx].images.length === 0;
+        const isStartPageEmpty = pages[startPageIdx].paths.length === 0 && pages[startPageIdx].images.length === 0 && (pages[startPageIdx].texts || []).length === 0;
         const firstTargetIdx = isStartPageEmpty ? startPageIdx : (startPageIdx + 1);
 
         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
@@ -1722,6 +2295,7 @@
             pages.splice(targetPageIdx, 0, {
               paths: [],
               images: [],
+              texts: [],
               undoStack: [],
               redoStack: [],
               viewScale: 1.0,
@@ -1777,6 +2351,7 @@
     }
 
     openFileBtn.addEventListener('click', () => {
+      commitInlineTextEditor(false);
       filePickerInput.value = '';
       filePickerInput.click();
     });
@@ -1795,7 +2370,7 @@
       if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
         e.preventDefault();
         handleIncomingFiles(e.clipboardData.files, null, true);
-      } else if (clipboard.paths.length > 0 || clipboard.images.length > 0) {
+      } else if (clipboard.paths.length > 0 || clipboard.images.length > 0 || (clipboard.texts || []).length > 0) {
         e.preventDefault();
         pasteClipboardAt();
       }
@@ -1870,6 +2445,28 @@
         }
       });
 
+      (texts || []).forEach(tObj => {
+        if (isEditingText && tObj === editingTextObj) return;
+        if (!tObj.text) return;
+        measureTextObject(tObj);
+        targetCtx.save();
+        targetCtx.globalAlpha = tObj.opacity !== undefined ? tObj.opacity : 1.0;
+        if (tObj.rotation) {
+          const cx = tObj.x + tObj.w / 2, cy = tObj.y + tObj.h / 2;
+          targetCtx.translate(cx, cy); targetCtx.rotate(tObj.rotation); targetCtx.translate(-cx, -cy);
+        }
+        const fontSize = tObj.fontSize || 32;
+        const lineHeight = fontSize * TEXT_LINE_HEIGHT_RATIO;
+        targetCtx.font = `${fontSize}px ${TEXT_FONT_FAMILY}`;
+        targetCtx.fillStyle = tObj.color || '#000000';
+        targetCtx.textBaseline = 'top';
+        const lines = tObj.text.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          targetCtx.fillText(lines[i], tObj.x + 4, tObj.y + 2 + i * lineHeight);
+        }
+        targetCtx.restore();
+      });
+
       paths.forEach(p => {
         if (!p.points || p.points.length === 0) return;
         targetCtx.save();
@@ -1923,7 +2520,7 @@
           ctx.strokeRect(selectionBox.x, selectionBox.y, selectionBox.w, selectionBox.h);
           ctx.fillStyle = 'rgba(0, 123, 255, 0.08)'; ctx.fillRect(selectionBox.x, selectionBox.y, selectionBox.w, selectionBox.h);
           ctx.restore();
-        } else if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0)) {
+        } else if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0 || selectedTexts.length > 0)) {
           const invS = 1 / viewScale;
           ctx.save();
           ctx.strokeStyle = '#007bff'; ctx.lineWidth = 2 * invS; ctx.setLineDash([4 * invS, 4 * invS]);
@@ -2183,6 +2780,7 @@
       selectToolBtn.classList.remove('active');
       penMenuBtn.classList.remove('active');
       eraserMenuBtn.classList.remove('active');
+      textToolBtn.classList.remove('active');
       zoomMenuBtn.classList.remove('active');
       penDropdown.classList.remove('show-sub');
       eraserDropdown.classList.remove('show-sub');
@@ -2191,15 +2789,35 @@
     }
 
     selectToolBtn.addEventListener('click', () => {
+      commitInlineTextEditor(false);
       currentTool = 'select';
       clearToolActiveStates();
       selectToolBtn.classList.add('active');
       activeTouchEraserPos = null;
       restoreDefaultCursorForCurrentTool();
+      updateTextFloatingBarVisibility();
+      redraw();
+    });
+
+    textToolBtn.addEventListener('click', () => {
+      currentTool = 'text';
+      clearToolActiveStates();
+      textToolBtn.classList.add('active');
+      activeTouchEraserPos = null;
+      selectedPaths = [];
+      selectedImages = [];
+      selectedTexts = [];
+      groupBounds = null;
+      origGroupBounds = null;
+      syncAdvancedPanelForTool();
+      updateSizeUI(textFontSize);
+      restoreDefaultCursorForCurrentTool();
+      updateTextFloatingBarVisibility();
       redraw();
     });
 
     function setZoomMode(mode) {
+      commitInlineTextEditor(false);
       currentTool = 'zoom';
       zoomMode = mode;
       clearToolActiveStates();
@@ -2208,6 +2826,7 @@
       document.getElementById('zoomOutBtn').classList.toggle('active', mode === 'out');
       activeTouchEraserPos = null;
       restoreDefaultCursorForCurrentTool();
+      updateTextFloatingBarVisibility();
       redraw();
     }
 
@@ -2225,7 +2844,7 @@
       setZoomMode('in');
       const cw = canvas.parentElement.clientWidth || window.innerWidth;
       const ch = canvas.parentElement.clientHeight || window.innerHeight;
-      if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0)) {
+      if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0 || selectedTexts.length > 0)) {
         const focusX = groupBounds.x + groupBounds.w / 2;
         const focusY = groupBounds.y + groupBounds.h / 2;
         viewScale = Math.min(MAX_VIEW_SCALE, Math.max(MIN_VIEW_SCALE, viewScale * 1.25));
@@ -2245,7 +2864,7 @@
       setZoomMode('out');
       const cw = canvas.parentElement.clientWidth || window.innerWidth;
       const ch = canvas.parentElement.clientHeight || window.innerHeight;
-      if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0)) {
+      if (groupBounds && (selectedPaths.length > 0 || selectedImages.length > 0 || selectedTexts.length > 0)) {
         const focusX = groupBounds.x + groupBounds.w / 2;
         const focusY = groupBounds.y + groupBounds.h / 2;
         viewScale = Math.min(MAX_VIEW_SCALE, Math.max(MIN_VIEW_SCALE, viewScale / 1.25));
@@ -2267,17 +2886,17 @@
       zoomDropdown.classList.remove('show-sub');
     });
 
-    function getRotatedRectAABB(img) {
-      const rot = img.rotation || 0;
+    function getRotatedRectAABB(boxObj) {
+      const rot = boxObj.rotation || 0;
       if (!rot) {
-        return { minX: img.x, minY: img.y, maxX: img.x + img.w, maxY: img.y + img.h };
+        return { minX: boxObj.x, minY: boxObj.y, maxX: boxObj.x + boxObj.w, maxY: boxObj.y + boxObj.h };
       }
-      const cx = img.x + img.w / 2;
-      const cy = img.y + img.h / 2;
+      const cx = boxObj.x + boxObj.w / 2;
+      const cy = boxObj.y + boxObj.h / 2;
       const cos = Math.cos(rot);
       const sin = Math.sin(rot);
-      const hw = img.w / 2;
-      const hh = img.h / 2;
+      const hw = boxObj.w / 2;
+      const hh = boxObj.h / 2;
       const ex = Math.abs(hw * cos) + Math.abs(hh * sin);
       const ey = Math.abs(hw * sin) + Math.abs(hh * cos);
       return {
@@ -2288,21 +2907,21 @@
       };
     }
 
-    function isPointInRotatedRect(px, py, img, pad = 0) {
-      const cx = img.x + img.w / 2;
-      const cy = img.y + img.h / 2;
-      const rot = img.rotation || 0;
+    function isPointInRotatedRect(px, py, boxObj, pad = 0) {
+      const cx = boxObj.x + boxObj.w / 2;
+      const cy = boxObj.y + boxObj.h / 2;
+      const rot = boxObj.rotation || 0;
       const dx = px - cx;
       const dy = py - cy;
       const cos = Math.cos(-rot);
       const sin = Math.sin(-rot);
       const lx = dx * cos - dy * sin;
       const ly = dx * sin + dy * cos;
-      return Math.abs(lx) <= (img.w / 2 + pad) && Math.abs(ly) <= (img.h / 2 + pad);
+      return Math.abs(lx) <= (boxObj.w / 2 + pad) && Math.abs(ly) <= (boxObj.h / 2 + pad);
     }
 
     function updateGroupBounds() {
-      if (selectedPaths.length === 0 && selectedImages.length === 0) {
+      if (selectedPaths.length === 0 && selectedImages.length === 0 && selectedTexts.length === 0) {
         groupBounds = null; topRightMenuWrapper.style.display = 'none'; return;
       }
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -2318,6 +2937,12 @@
         if (box.minX < minX) minX = box.minX; if (box.minY < minY) minY = box.minY;
         if (box.maxX > maxX) maxX = box.maxX; if (box.maxY > maxY) maxY = box.maxY;
       });
+      selectedTexts.forEach(tObj => {
+        measureTextObject(tObj);
+        const box = getRotatedRectAABB(tObj);
+        if (box.minX < minX) minX = box.minX; if (box.minY < minY) minY = box.minY;
+        if (box.maxX > maxX) maxX = box.maxX; if (box.maxY > maxY) maxY = box.maxY;
+      });
       groupBounds = { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
     }
 
@@ -2326,6 +2951,7 @@
       e.stopPropagation(); opacitySubPanel.classList.toggle('show');
       let curOp = 1.0;
       if (selectedImages.length > 0) curOp = selectedImages[0].opacity !== undefined ? selectedImages[0].opacity : 1.0;
+      else if (selectedTexts.length > 0) curOp = selectedTexts[0].opacity !== undefined ? selectedTexts[0].opacity : 1.0;
       else if (selectedPaths.length > 0) curOp = selectedPaths[0].opacity !== undefined ? selectedPaths[0].opacity : 1.0;
       opacityRange.value = Math.round(curOp * 100);
       opacityValText.textContent = opacityRange.value + '%';
@@ -2341,8 +2967,11 @@
       const val = parseInt(e.target.value) / 100;
       opacityValText.textContent = e.target.value + '%';
       selectedImages.forEach(img => img.opacity = val);
+      selectedTexts.forEach(t => t.opacity = val);
       selectedPaths.forEach(p => p.opacity = val);
-      pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+      pages[currentPageIndex].paths = paths;
+      pages[currentPageIndex].images = images;
+      pages[currentPageIndex].texts = texts;
       scheduleRedraw();
       scheduleSaveProgress(400);
     });
@@ -2378,8 +3007,12 @@
     function deleteSelected() {
       paths = paths.filter(p => !selectedPaths.includes(p));
       images = images.filter(img => !selectedImages.includes(img));
-      pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
-      selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null;
+      texts = texts.filter(t => !selectedTexts.includes(t));
+      pages[currentPageIndex].paths = paths;
+      pages[currentPageIndex].images = images;
+      pages[currentPageIndex].texts = texts;
+      selectedPaths = []; selectedImages = []; selectedTexts = []; groupBounds = null; origGroupBounds = null;
+      updateTextFloatingBarVisibility();
       redraw(); saveProgress();
     }
 
@@ -2389,19 +3022,27 @@
       clipboard.images = selectedImages.map(img => ({
         x: img.x, y: img.y, w: img.w, h: img.h, src: img.src, opacity: img.opacity, rotation: img.rotation || 0
       }));
+      clipboard.texts = selectedTexts.map(t => ({
+        text: t.text, x: t.x, y: t.y, w: t.w, h: t.h, fontSize: t.fontSize, color: t.color, opacity: t.opacity, rotation: t.rotation || 0
+      }));
     }
 
     function pasteClipboardAt(posX, posY) {
-      if (clipboard.paths.length === 0 && clipboard.images.length === 0) return;
+      if (clipboard.paths.length === 0 && clipboard.images.length === 0 && (clipboard.texts || []).length === 0) return;
       const targetPageIdx = currentPageIndex;
       const targetPage = pages[targetPageIdx];
       recordUndoStep(targetPageIdx);
-      selectedPaths = []; selectedImages = [];
+      selectedPaths = []; selectedImages = []; selectedTexts = [];
 
       let minX = Infinity, minY = Infinity;
       clipboard.paths.forEach(p => p.points.forEach(pt => { if (pt.x < minX) minX = pt.x; if (pt.y < minY) minY = pt.y; }));
       clipboard.images.forEach(img => {
         const box = getRotatedRectAABB(img);
+        if (box.minX < minX) minX = box.minX;
+        if (box.minY < minY) minY = box.minY;
+      });
+      (clipboard.texts || []).forEach(t => {
+        const box = getRotatedRectAABB(t);
         if (box.minX < minX) minX = box.minX;
         if (box.minY < minY) minY = box.minY;
       });
@@ -2434,10 +3075,30 @@
         selectedImages.push(newImgObj);
       });
 
+      if (!targetPage.texts) targetPage.texts = [];
+      (clipboard.texts || []).forEach(item => {
+        const newTextObj = {
+          text: item.text,
+          x: item.x + offsetX,
+          y: item.y + offsetY,
+          w: item.w,
+          h: item.h,
+          fontSize: item.fontSize || 32,
+          color: item.color || '#000000',
+          opacity: item.opacity !== undefined ? item.opacity : 1.0,
+          rotation: item.rotation || 0
+        };
+        measureTextObject(newTextObj);
+        targetPage.texts.push(newTextObj);
+        selectedTexts.push(newTextObj);
+      });
+
       paths = targetPage.paths;
       images = targetPage.images;
+      texts = targetPage.texts;
       updateGroupBounds();
       prepareTransformBackup();
+      updateTextFloatingBarVisibility();
       redraw();
       saveProgress();
     }
@@ -2451,6 +3112,15 @@
         img.origW = img.w;
         img.origH = img.h;
         img.origRotation = img.rotation || 0;
+      });
+      selectedTexts.forEach(t => {
+        measureTextObject(t);
+        t.origX = t.x;
+        t.origY = t.y;
+        t.origW = t.w;
+        t.origH = t.h;
+        t.origFontSize = t.fontSize || 32;
+        t.origRotation = t.rotation || 0;
       });
       selectedPaths.forEach(p => {
         p.origSize = p.size;
@@ -2507,6 +3177,7 @@
     }
 
     screenshotBtn.addEventListener('click', async () => {
+      commitInlineTextEditor(false);
       if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
         try {
           const displayOptions = { video: { cursor: "always" }, audio: false };
@@ -2760,15 +3431,56 @@
         colorTabContent.classList.remove('active');
 
         widthTabBtn.style.display = '';
+        widthTabBtn.textContent = '寬度';
         widthTabBtn.classList.add('active');
         widthTabContent.classList.add('active');
-      } else if (currentTool === 'pen') {
+
+        sizeRange.min = 1;
+        sizeRange.max = 50;
+        sizeMinLabel.textContent = '細';
+        sizeMaxLabel.textContent = '粗';
+        sizePresetsContainer.innerHTML = `
+          <div class="size-preset-btn" data-size="3"><span style="width:4px;height:4px;background:white;border-radius:50%;"></span></div>
+          <div class="size-preset-btn" data-size="8"><span style="width:10px;height:10px;background:white;border-radius:50%;"></span></div>
+          <div class="size-preset-btn" data-size="20"><span style="width:18px;height:18px;background:white;border-radius:50%;"></span></div>
+        `;
+        bindSizePresetButtons();
+      } else if (currentTool === 'text') {
         colorTabBtn.style.display = '';
         widthTabBtn.style.display = '';
+        widthTabBtn.textContent = '字體';
         if (!colorTabBtn.classList.contains('active') && !widthTabBtn.classList.contains('active')) {
           colorTabBtn.classList.add('active');
           colorTabContent.classList.add('active');
         }
+        sizeRange.min = 12;
+        sizeRange.max = 120;
+        sizeMinLabel.textContent = '小';
+        sizeMaxLabel.textContent = '大';
+        sizePresetsContainer.innerHTML = `
+          <div class="size-preset-btn" data-size="20" style="font-size:12px;">小</div>
+          <div class="size-preset-btn" data-size="36" style="font-size:15px;">中</div>
+          <div class="size-preset-btn" data-size="64" style="font-size:18px;">大</div>
+        `;
+        bindSizePresetButtons();
+      } else {
+        colorTabBtn.style.display = '';
+        widthTabBtn.style.display = '';
+        widthTabBtn.textContent = '寬度';
+        if (!colorTabBtn.classList.contains('active') && !widthTabBtn.classList.contains('active')) {
+          colorTabBtn.classList.add('active');
+          colorTabContent.classList.add('active');
+        }
+        sizeRange.min = 1;
+        sizeRange.max = 50;
+        sizeMinLabel.textContent = '細';
+        sizeMaxLabel.textContent = '粗';
+        sizePresetsContainer.innerHTML = `
+          <div class="size-preset-btn" data-size="3"><span style="width:4px;height:4px;background:white;border-radius:50%;"></span></div>
+          <div class="size-preset-btn" data-size="8"><span style="width:10px;height:10px;background:white;border-radius:50%;"></span></div>
+          <div class="size-preset-btn" data-size="20"><span style="width:18px;height:18px;background:white;border-radius:50%;"></span></div>
+        `;
+        bindSizePresetButtons();
       }
     }
 
@@ -2791,10 +3503,21 @@
     });
 
     colorBtn.addEventListener('click', (e) => {
-      if (currentTool === 'select' || currentTool === 'zoom') return;
+      if (currentTool === 'select' && selectedTexts.length === 0) return;
+      if (currentTool === 'zoom') return;
       if (currentTool === 'eraser' && (eraserType === 'object' || eraserType === 'lasso')) return;
       e.stopPropagation();
       syncAdvancedPanelForTool();
+      if (currentTool === 'text') {
+        sizeRange.value = textFontSize;
+        updateSizeUI(textFontSize);
+      } else if (currentTool === 'eraser') {
+        sizeRange.value = eraserSize;
+        updateSizeUI(eraserSize);
+      } else {
+        sizeRange.value = penSize;
+        updateSizeUI(penSize);
+      }
       positionPopupNearButton(colorBtn, advancedPanel);
       advancedPanel.classList.toggle('show');
       penDropdown.classList.remove('show-sub');
@@ -2844,8 +3567,12 @@
     }
 
     function setPenType(type) {
+      commitInlineTextEditor(false);
       const wasEraser = (currentTool === 'eraser');
-      currentTool = 'pen'; selectToolBtn.classList.remove('active'); zoomMenuBtn.classList.remove('active');
+      currentTool = 'pen';
+      selectToolBtn.classList.remove('active');
+      textToolBtn.classList.remove('active');
+      zoomMenuBtn.classList.remove('active');
       penType = type; penMenuBtn.classList.add('active'); eraserMenuBtn.classList.remove('active');
       activeTouchEraserPos = null;
       document.querySelectorAll('#penDropdown .sub-menu button').forEach(b => b.classList.remove('active'));
@@ -2856,6 +3583,7 @@
       );
       document.getElementById(activeId).classList.add('active');
       restoreDefaultCursorForCurrentTool();
+      syncAdvancedPanelForTool();
       sizeRange.value = penSize; updateSizeUI(penSize);
       if (wasEraser) {
         colorTabBtn.style.display = '';
@@ -2863,10 +3591,10 @@
         colorTabContent.classList.add('active');
         widthTabBtn.classList.remove('active');
         widthTabContent.classList.remove('active');
-      } else {
-        syncAdvancedPanelForTool();
       }
-      selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null; redraw();
+      selectedPaths = []; selectedImages = []; selectedTexts = []; groupBounds = null; origGroupBounds = null;
+      updateTextFloatingBarVisibility();
+      redraw();
     }
     document.getElementById('typeNormal').addEventListener('click', (e) => { e.stopPropagation(); setPenType('normal'); penDropdown.classList.remove('show-sub'); });
     document.getElementById('typeSoft').addEventListener('click', (e) => { e.stopPropagation(); setPenType('soft'); penDropdown.classList.remove('show-sub'); });
@@ -2874,19 +3602,24 @@
     document.getElementById('typeSparkle').addEventListener('click', (e) => { e.stopPropagation(); setPenType('sparkle'); penDropdown.classList.remove('show-sub'); });
 
     function setEraserType(type) {
-      currentTool = 'eraser'; selectToolBtn.classList.remove('active'); zoomMenuBtn.classList.remove('active');
+      commitInlineTextEditor(false);
+      currentTool = 'eraser';
+      selectToolBtn.classList.remove('active');
+      textToolBtn.classList.remove('active');
+      zoomMenuBtn.classList.remove('active');
       eraserType = type; eraserMenuBtn.classList.add('active'); penMenuBtn.classList.remove('active');
       activeTouchEraserPos = null;
       document.querySelectorAll('#eraserDropdown .sub-menu button').forEach(b => b.classList.remove('active'));
       document.getElementById('erase' + (type === 'normal' ? 'Normal' : type === 'object' ? 'Object' : 'Lasso')).classList.add('active');
+      syncAdvancedPanelForTool();
       sizeRange.value = eraserSize; updateSizeUI(eraserSize);
       updateEraserCursor();
       if (type === 'object' || type === 'lasso') {
         advancedPanel.classList.remove('show');
-      } else {
-        syncAdvancedPanelForTool();
       }
-      selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null; redraw();
+      selectedPaths = []; selectedImages = []; selectedTexts = []; groupBounds = null; origGroupBounds = null;
+      updateTextFloatingBarVisibility();
+      redraw();
     }
     document.getElementById('eraseNormal').addEventListener('click', (e) => { e.stopPropagation(); setEraserType('normal'); eraserDropdown.classList.remove('show-sub'); });
     document.getElementById('eraseObject').addEventListener('click', (e) => { e.stopPropagation(); setEraserType('object'); eraserDropdown.classList.remove('show-sub'); });
@@ -2894,31 +3627,69 @@
 
     document.querySelectorAll('.color-box').forEach(box => {
       box.addEventListener('click', (e) => {
-        e.stopPropagation(); currentColor = box.getAttribute('data-color'); advancedPanel.classList.remove('show');
-        if (currentTool === 'eraser') setPenType(penType);
+        e.stopPropagation();
+        const picked = box.getAttribute('data-color');
+        currentColor = picked;
+        advancedPanel.classList.remove('show');
+        if (currentTool === 'text' || isEditingText || (currentTool === 'select' && selectedTexts.length > 0)) {
+          applyTextColorChange(picked, true);
+          if (isEditingText) inlineTextEditor.focus();
+        } else if (currentTool === 'eraser') {
+          setPenType(penType);
+        }
       });
     });
 
     function updateSizeUI(val) {
-      sizePreviewDot.style.width = Math.min(45, Math.max(4, val)) + 'px';
-      sizePreviewDot.style.height = Math.min(45, Math.max(4, val)) + 'px';
-      if (currentTool === 'eraser') {
-        eraserSize = parseInt(val);
+      const numVal = parseInt(val, 10);
+      if (currentTool === 'text' || isEditingText) {
+        textFontSize = numVal;
+        sizeLabelTitle.textContent = `字體大小調整 (${numVal}px)`;
+        sizePreviewDot.style.width = 'auto';
+        sizePreviewDot.style.height = 'auto';
+        sizePreviewDot.style.background = 'transparent';
+        sizePreviewDot.style.borderRadius = '0';
+        sizePreviewDot.style.color = textColor === '#333333' ? '#ffffff' : textColor;
+        sizePreviewDot.style.fontSize = Math.min(40, Math.max(12, numVal * 0.55)) + 'px';
+        sizePreviewDot.style.fontWeight = 'bold';
+        sizePreviewDot.textContent = 'Aa';
+        applyTextFontSizeChange(numVal, false);
+      } else if (currentTool === 'eraser') {
+        eraserSize = numVal;
+        sizePreviewDot.textContent = '';
+        sizePreviewDot.style.background = 'white';
+        sizePreviewDot.style.borderRadius = '50%';
+        sizePreviewDot.style.width = Math.min(45, Math.max(4, numVal)) + 'px';
+        sizePreviewDot.style.height = Math.min(45, Math.max(4, numVal)) + 'px';
         sizeLabelTitle.textContent = "橡皮擦大小調整";
         updateEraserCursor();
       } else {
-        penSize = parseInt(val);
+        penSize = numVal;
+        sizePreviewDot.textContent = '';
+        sizePreviewDot.style.background = 'white';
+        sizePreviewDot.style.borderRadius = '50%';
+        sizePreviewDot.style.width = Math.min(45, Math.max(4, numVal)) + 'px';
+        sizePreviewDot.style.height = Math.min(45, Math.max(4, numVal)) + 'px';
         sizeLabelTitle.textContent = "筆大小調整";
       }
     }
 
-    sizeRange.addEventListener('input', (e) => { e.stopPropagation(); updateSizeUI(sizeRange.value); });
-    sizePresetBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation(); const val = btn.getAttribute('data-size');
-        sizeRange.value = val; updateSizeUI(val);
-      });
+    sizeRange.addEventListener('input', (e) => {
+      e.stopPropagation();
+      updateSizeUI(sizeRange.value);
     });
+
+    function bindSizePresetButtons() {
+      sizePresetsContainer.querySelectorAll('.size-preset-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const val = btn.getAttribute('data-size');
+          sizeRange.value = val;
+          updateSizeUI(val);
+        });
+      });
+    }
+    bindSizePresetButtons();
 
     function screenToWorld(sx, sy) {
       return {
@@ -3012,6 +3783,17 @@
       );
     }
 
+    function hitTestTextObject(pos) {
+      for (let i = (texts || []).length - 1; i >= 0; i--) {
+        const t = texts[i];
+        measureTextObject(t);
+        if (isPointInRotatedRect(pos.x, pos.y, t, 4 / viewScale)) {
+          return t;
+        }
+      }
+      return null;
+    }
+
     function hitTestObject(pos) {
       const hitRadius = 18 / viewScale;
       for (let i = paths.length - 1; i >= 0; i--) {
@@ -3034,6 +3816,9 @@
           }
         }
       }
+      const hitText = hitTestTextObject(pos);
+      if (hitText) return { type: 'text', obj: hitText };
+
       for (let i = images.length - 1; i >= 0; i--) {
         const img = images[i];
         if (isPointInRotatedRect(pos.x, pos.y, img, 0)) return { type: 'image', obj: img };
@@ -3102,7 +3887,44 @@
       }
 
       const pos = getPointerPos(e);
+
+      if (currentTool === 'text') {
+        if (isEditingText) {
+          commitInlineTextEditor(false);
+          const hitText = hitTestTextObject(pos);
+          if (hitText) {
+            openInlineTextEditor(hitText.x, hitText.y, hitText);
+          }
+          return;
+        }
+        const hitText = hitTestTextObject(pos);
+        if (hitText) {
+          openInlineTextEditor(hitText.x, hitText.y, hitText);
+        } else {
+          openInlineTextEditor(pos.x, pos.y, null);
+        }
+        return;
+      }
+
       if (currentTool === 'select') {
+        const now = performance.now();
+        const isDoubleTap = (now - lastCanvasTapTime < 350) && (Math.hypot(pos.x - lastCanvasTapWorld.x, pos.y - lastCanvasTapWorld.y) < (24 / viewScale));
+        lastCanvasTapTime = now;
+        lastCanvasTapWorld = { x: pos.x, y: pos.y };
+
+        if (isDoubleTap) {
+          const hitText = hitTestTextObject(pos);
+          if (hitText) {
+            selectedPaths = [];
+            selectedImages = [];
+            selectedTexts = [];
+            groupBounds = null;
+            origGroupBounds = null;
+            openInlineTextEditor(hitText.x, hitText.y, hitText);
+            return;
+          }
+        }
+
         if (groupBounds) {
           const handle = hitTestHandle(pos);
           if (handle) {
@@ -3132,15 +3954,20 @@
           pendingHistorySnapshot = capturePageState();
           selectedPaths = hit.type === 'path' ? [hit.obj] : [];
           selectedImages = hit.type === 'image' ? [hit.obj] : [];
+          selectedTexts = hit.type === 'text' ? [hit.obj] : [];
           updateGroupBounds(); prepareTransformBackup(); interactionState = 'dragging';
           dragStartX = pos.x; dragStartY = pos.y;
           canvas.style.cursor = 'move';
-          objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); redraw(); return;
+          objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show');
+          updateTextFloatingBarVisibility();
+          redraw(); return;
         }
         isSelecting = true; selectStartX = pos.x; selectStartY = pos.y;
         selectionBox = { x: pos.x, y: pos.y, w: 0, h: 0 };
-        selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null;
-        objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); redraw();
+        selectedPaths = []; selectedImages = []; selectedTexts = []; groupBounds = null; origGroupBounds = null;
+        objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show');
+        updateTextFloatingBarVisibility();
+        redraw();
       } else {
         isDrawing = true;
         pendingHistorySnapshot = capturePageState();
@@ -3181,7 +4008,7 @@
         return;
       }
 
-      if (currentTool === 'zoom') return;
+      if (currentTool === 'zoom' || currentTool === 'text') return;
       const pos = getPointerPos(e);
       if (currentTool === 'select') {
         const minWorldSize = Math.max(0.2, 12 / viewScale);
@@ -3190,7 +4017,11 @@
           dragStartX = pos.x; dragStartY = pos.y;
           selectedPaths.forEach(p => p.points.forEach(pt => { pt.x += dx; pt.y += dy; }));
           selectedImages.forEach(img => { img.x += dx; img.y += dy; });
-          updateGroupBounds(); pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+          selectedTexts.forEach(t => { t.x += dx; t.y += dy; });
+          updateGroupBounds();
+          pages[currentPageIndex].paths = paths;
+          pages[currentPageIndex].images = images;
+          pages[currentPageIndex].texts = texts;
           scheduleRedraw();
         } else if (interactionState === 'resizing-sw' && origGroupBounds) {
           const origRight = origGroupBounds.x + origGroupBounds.w;
@@ -3216,6 +4047,16 @@
             img.x = newCx - img.w / 2;
             img.y = newCy - img.h / 2;
           });
+          selectedTexts.forEach(t => {
+            const origCx = t.origX + t.origW / 2;
+            const origCy = t.origY + t.origH / 2;
+            const newCx = origRight + (origCx - origRight) * avgScale;
+            const newCy = origTop + (origCy - origTop) * avgScale;
+            t.fontSize = Math.max(6, t.origFontSize * avgScale);
+            measureTextObject(t);
+            t.x = newCx - t.w / 2;
+            t.y = newCy - t.h / 2;
+          });
           selectedPaths.forEach(p => {
             if (p.origSize !== undefined) p.size = Math.max(0.1, p.origSize * avgScale);
             p.points.forEach((pt, idx) => {
@@ -3225,7 +4066,10 @@
             });
           });
           updateGroupBounds();
-          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+          updateTextFloatingBarVisibility();
+          pages[currentPageIndex].paths = paths;
+          pages[currentPageIndex].images = images;
+          pages[currentPageIndex].texts = texts;
           scheduleRedraw();
         } else if (interactionState === 'resizing-e' && origGroupBounds) {
           const origLeft = origGroupBounds.x;
@@ -3245,6 +4089,14 @@
             img.x = newCx - newImgW / 2;
             img.y = (img.origY + img.origH / 2) - newImgH / 2;
           });
+          selectedTexts.forEach(t => {
+            const origCx = t.origX + t.origW / 2;
+            const newCx = origLeft + (origCx - origLeft) * scaleX;
+            t.fontSize = Math.max(6, t.origFontSize * scaleX);
+            measureTextObject(t);
+            t.x = newCx - t.w / 2;
+            t.y = (t.origY + t.origH / 2) - t.h / 2;
+          });
           selectedPaths.forEach(p => {
             p.points.forEach((pt, idx) => {
               const origPt = p.origPoints[idx];
@@ -3253,7 +4105,8 @@
             });
           });
           updateGroupBounds();
-          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+          updateTextFloatingBarVisibility();
+          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images; pages[currentPageIndex].texts = texts;
           scheduleRedraw();
         } else if (interactionState === 'resizing-w' && origGroupBounds) {
           const origRight = origGroupBounds.x + origGroupBounds.w;
@@ -3273,6 +4126,14 @@
             img.x = newCx - newImgW / 2;
             img.y = (img.origY + img.origH / 2) - newImgH / 2;
           });
+          selectedTexts.forEach(t => {
+            const origCx = t.origX + t.origW / 2;
+            const newCx = origRight + (origCx - origRight) * scaleX;
+            t.fontSize = Math.max(6, t.origFontSize * scaleX);
+            measureTextObject(t);
+            t.x = newCx - t.w / 2;
+            t.y = (t.origY + t.origH / 2) - t.h / 2;
+          });
           selectedPaths.forEach(p => {
             p.points.forEach((pt, idx) => {
               const origPt = p.origPoints[idx];
@@ -3281,7 +4142,8 @@
             });
           });
           updateGroupBounds();
-          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+          updateTextFloatingBarVisibility();
+          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images; pages[currentPageIndex].texts = texts;
           scheduleRedraw();
         } else if (interactionState === 'resizing-s' && origGroupBounds) {
           const origTop = origGroupBounds.y;
@@ -3301,6 +4163,14 @@
             img.x = (img.origX + img.origW / 2) - newImgW / 2;
             img.y = newCy - newImgH / 2;
           });
+          selectedTexts.forEach(t => {
+            const origCy = t.origY + t.origH / 2;
+            const newCy = origTop + (origCy - origTop) * scaleY;
+            t.fontSize = Math.max(6, t.origFontSize * scaleY);
+            measureTextObject(t);
+            t.x = (t.origX + t.origW / 2) - t.w / 2;
+            t.y = newCy - t.h / 2;
+          });
           selectedPaths.forEach(p => {
             p.points.forEach((pt, idx) => {
               const origPt = p.origPoints[idx];
@@ -3309,7 +4179,8 @@
             });
           });
           updateGroupBounds();
-          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+          updateTextFloatingBarVisibility();
+          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images; pages[currentPageIndex].texts = texts;
           scheduleRedraw();
         } else if (interactionState === 'resizing-n' && origGroupBounds) {
           const origBottom = origGroupBounds.y + origGroupBounds.h;
@@ -3329,6 +4200,14 @@
             img.x = (img.origX + img.origW / 2) - newImgW / 2;
             img.y = newCy - newImgH / 2;
           });
+          selectedTexts.forEach(t => {
+            const origCy = t.origY + t.origH / 2;
+            const newCy = origBottom + (origCy - origBottom) * scaleY;
+            t.fontSize = Math.max(6, t.origFontSize * scaleY);
+            measureTextObject(t);
+            t.x = (t.origX + t.origW / 2) - t.w / 2;
+            t.y = newCy - t.h / 2;
+          });
           selectedPaths.forEach(p => {
             p.points.forEach((pt, idx) => {
               const origPt = p.origPoints[idx];
@@ -3337,7 +4216,8 @@
             });
           });
           updateGroupBounds();
-          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+          updateTextFloatingBarVisibility();
+          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images; pages[currentPageIndex].texts = texts;
           scheduleRedraw();
         } else if (interactionState === 'rotating' && origGroupBounds) {
           const cx = origGroupBounds.x + origGroupBounds.w / 2;
@@ -3358,6 +4238,18 @@
             img.rotation = (img.origRotation || 0) + deltaAngle;
           });
 
+          selectedTexts.forEach(t => {
+            const origTCx = t.origX + t.origW / 2;
+            const origTCy = t.origY + t.origH / 2;
+            const dx = origTCx - cx;
+            const dy = origTCy - cy;
+            const newTCx = cx + dx * cos - dy * sin;
+            const newTCy = cy + dx * sin + dy * cos;
+            t.x = newTCx - t.origW / 2;
+            t.y = newTCy - t.origH / 2;
+            t.rotation = (t.origRotation || 0) + deltaAngle;
+          });
+
           selectedPaths.forEach(p => {
             p.rotation = 0;
             p.points.forEach((pt, idx) => {
@@ -3370,7 +4262,7 @@
           });
 
           updateGroupBounds();
-          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images;
+          pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images; pages[currentPageIndex].texts = texts;
           scheduleRedraw();
         } else if (isSelecting) {
           selectionBox.w = pos.x - selectStartX; selectionBox.h = pos.y - selectStartY;
@@ -3451,6 +4343,16 @@
               box.maxY > selectionBox.y
             );
           });
+          selectedTexts = (texts || []).filter(t => {
+            measureTextObject(t);
+            const box = getRotatedRectAABB(t);
+            return (
+              box.minX < selectionBox.x + selectionBox.w &&
+              box.maxX > selectionBox.x &&
+              box.minY < selectionBox.y + selectionBox.h &&
+              box.maxY > selectionBox.y
+            );
+          });
           selectedPaths = paths.filter(p => {
             if (!p.points || p.points.length === 0) return false;
             if (p.rotation) bakePathRotation(p);
@@ -3472,7 +4374,11 @@
             }
             return false;
           });
-          updateGroupBounds(); selectionBox = null; prepareTransformBackup(); redraw();
+          updateGroupBounds();
+          selectionBox = null;
+          prepareTransformBackup();
+          updateTextFloatingBarVisibility();
+          redraw();
         }
       } else if (isDrawing) {
         isDrawing = false;
@@ -3481,7 +4387,15 @@
             if (p.rotation) bakePathRotation(p);
             return !p.points.some(pt => isPointInPolygon(pt, lassoPoints));
           });
-          pages[currentPageIndex].paths = paths; lassoPoints = []; redraw();
+          texts = (texts || []).filter(t => {
+            measureTextObject(t);
+            const center = { x: t.x + t.w / 2, y: t.y + t.h / 2 };
+            return !isPointInPolygon(center, lassoPoints);
+          });
+          pages[currentPageIndex].paths = paths;
+          pages[currentPageIndex].texts = texts;
+          lassoPoints = [];
+          redraw();
         } else if (currentTool === 'eraser' && eraserType === 'lasso') { lassoPoints = []; redraw(); }
         if (pendingHistorySnapshot && !isSamePageState(pendingHistorySnapshot, capturePageState())) {
           pushHistorySnapshot(pendingHistorySnapshot);
@@ -3648,7 +4562,7 @@
         return;
       }
 
-      if (currentTool === 'select' && (selectedPaths.length > 0 || selectedImages.length > 0)) {
+      if (currentTool === 'select' && (selectedPaths.length > 0 || selectedImages.length > 0 || selectedTexts.length > 0)) {
         if (e.key === 'Delete' || e.key === 'Backspace') {
           recordUndoStep();
           deleteSelected();
@@ -3938,10 +4852,24 @@
         return true;
       });
       if (paths.length !== pCount) changed = true;
+
+      const textCount = (texts || []).length;
+      texts = (texts || []).filter(t => {
+        measureTextObject(t);
+        return !isPointInRotatedRect(pos.x, pos.y, t, 4 / viewScale);
+      });
+      if (texts.length !== textCount) changed = true;
+
       const imgCount = images.length;
       images = images.filter(img => !isPointInRotatedRect(pos.x, pos.y, img, 0));
       if (images.length !== imgCount) changed = true;
-      if (changed) { pages[currentPageIndex].paths = paths; pages[currentPageIndex].images = images; scheduleRedraw(); }
+
+      if (changed) {
+        pages[currentPageIndex].paths = paths;
+        pages[currentPageIndex].images = images;
+        pages[currentPageIndex].texts = texts;
+        scheduleRedraw();
+      }
     }
 
     function isPointInPolygon(point, polygon) {
@@ -3954,13 +4882,19 @@
     }
 
     clearBtn.addEventListener('click', () => {
-      if (paths.length > 0 || images.length > 0) {
+      commitInlineTextEditor(false);
+      if (paths.length > 0 || images.length > 0 || (texts || []).length > 0) {
         recordUndoStep();
       }
-      pages[currentPageIndex].paths = []; pages[currentPageIndex].images = [];
-      paths = pages[currentPageIndex].paths; images = pages[currentPageIndex].images;
-      selectedPaths = []; selectedImages = []; groupBounds = null; origGroupBounds = null;
+      pages[currentPageIndex].paths = [];
+      pages[currentPageIndex].images = [];
+      pages[currentPageIndex].texts = [];
+      paths = pages[currentPageIndex].paths;
+      images = pages[currentPageIndex].images;
+      texts = pages[currentPageIndex].texts;
+      selectedPaths = []; selectedImages = []; selectedTexts = []; groupBounds = null; origGroupBounds = null;
       topRightMenuWrapper.style.display = 'none'; objectMenu.classList.remove('show'); opacitySubPanel.classList.remove('show'); canvasMenu.style.display = 'none';
+      updateTextFloatingBarVisibility();
       resetViewTransform();
       redraw(); saveProgress();
     });
@@ -3993,6 +4927,11 @@
         expandRotatedRect(imgObj.x, imgObj.y, imgObj.w, imgObj.h, imgObj.rotation || 0, 0);
       });
 
+      (texts || []).forEach(tObj => {
+        measureTextObject(tObj);
+        expandRotatedRect(tObj.x, tObj.y, tObj.w, tObj.h, tObj.rotation || 0, 4);
+      });
+
       paths.forEach(p => {
         if (!p.points || p.points.length === 0) return;
         let pMinX = Infinity, pMinY = Infinity, pMaxX = -Infinity, pMaxY = -Infinity;
@@ -4017,7 +4956,8 @@
     }
 
     function saveDrawingFile() {
-      if (paths.length === 0 && images.length === 0) return;
+      commitInlineTextEditor(false);
+      if (paths.length === 0 && images.length === 0 && (texts || []).length === 0) return;
       let fileName = prompt(`請輸入「第 ${currentPageIndex + 1} 頁」的檔案名稱：`, `數位白板_第${currentPageIndex + 1}頁`);
       if (fileName !== null) {
         fileName = fileName.trim() === "" ? `drawing_page_${currentPageIndex + 1}` : fileName.trim();
